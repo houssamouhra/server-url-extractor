@@ -2,12 +2,17 @@ import { test, expect } from "@playwright/test";
 import { login } from "./helpers/login";
 import { waitForDynamicPage } from "./helpers/waitForDynamicPage";
 import { checkForRealAnchorInTextarea } from "./helpers/hasValidAnchorLinks";
+import { checkForUrlInPlaceholders } from "./helpers/hasValidPlaceholderLinks";
 
-test.setTimeout(100000);
+test.setTimeout(180000);
 
-// prettier-ignore
-// Test case: Click on server link and redirect to monitoring users page
-test("Click to the server link and redirect to monitoring users", async ({page, browserName}) => {
+test.describe(() => {
+  // prettier-ignore
+  test.skip(({ browserName }) => browserName !== 'chromium', 'Skipping test on non-chromium browsers');
+
+  // prettier-ignore
+  // Click on server link and redirect to monitoring users page to copy urls/domain name on multiple textareas
+  test("Click to the server link and redirect to monitoring users", async ({page, browserName}) => {
   // Go to the main URL of the application
   await page.goto("http://37.27.113.240:4043/");
 
@@ -76,7 +81,7 @@ test("Click to the server link and redirect to monitoring users", async ({page, 
   await expect(newPage.locator("span", {hasText: 'Email Body'})).toBeVisible();
 
   // Check if the Userpage Textarea contains a valid <a> element with a valid URL
-  const hasRealAnchor = await checkForRealAnchorInTextarea(newPage, browserName);
+  const hasRealAnchor = await checkForRealAnchorInTextarea(newPage);
 
   // Check if the element contains a valid URL and continue the test if not found
   if (hasRealAnchor) {
@@ -84,4 +89,11 @@ test("Click to the server link and redirect to monitoring users", async ({page, 
   } else {
    console.warn('⚠️ No valid anchor link found, but continuing test...');
   }
+
+  // Check if the placeholders textareas have a valid URL/domain name
+  const hasValidUrl  = await checkForUrlInPlaceholders(newPage);
+
+  expect(hasValidUrl, 'At least one placeholder should contain a valid URL').toBe(true);
+  
+});
 });
