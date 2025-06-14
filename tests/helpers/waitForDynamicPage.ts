@@ -15,7 +15,7 @@ export async function waitForDynamicPage(page: Page): Promise<Page> {
 
   console.log("Dynamic Page URL:", popup.url());
 
-  // Optional: Assert the URL pattern again for safety
+  // Assert the URL pattern again for safety
   await expect(popup).toHaveURL(/.*\/md\/\d+\.html/);
 
   // Return the popup page for further interactions

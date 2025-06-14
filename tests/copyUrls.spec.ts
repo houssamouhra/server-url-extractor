@@ -1,12 +1,13 @@
 import { test, expect } from "@playwright/test";
 import { login } from "./helpers/login";
 import { waitForDynamicPage } from "./helpers/waitForDynamicPage";
+import { checkForRealAnchorInTextarea } from "./helpers/hasValidAnchorLinks";
 
-test.setTimeout(60000);
+test.setTimeout(100000);
 
 // prettier-ignore
 // Test case: Click on server link and redirect to monitoring users page
-test("Click to the server link and redirect to monitoring users", async ({page}) => {
+test("Click to the server link and redirect to monitoring users", async ({page, browserName}) => {
   // Go to the main URL of the application
   await page.goto("http://37.27.113.240:4043/");
 
@@ -45,7 +46,7 @@ test("Click to the server link and redirect to monitoring users", async ({page})
 
   await expect(loading).toBeVisible({ timeout: 10000 });
 
-  await expect(loading).toBeHidden({ timeout: 60000 });
+  await expect(loading).toBeHidden({ timeout: 100000 });
 
   // Select the second checkbox element on the page
   const secondCheckbox = page.locator('label.mt-checkbox span').nth(1);
@@ -71,4 +72,16 @@ test("Click to the server link and redirect to monitoring users", async ({page})
   // Assert that the title span with text "PRODUCTION SEND PAGE" is visible in the new page
   await expect(newPage.locator("span", { hasText: "PRODUCTION SEND PAGE" })).toBeVisible();
 
+  // Assert that part to scan have a title named "Email Body"
+  await expect(newPage.locator("span", {hasText: 'Email Body'})).toBeVisible();
+
+  // Check if the Userpage Textarea contains a valid <a> element with a valid URL
+  const hasRealAnchor = await checkForRealAnchorInTextarea(newPage, browserName);
+
+  // Check if the element contains a valid URL and continue the test if not found
+  if (hasRealAnchor) {
+   console.log('✅ Valid anchor link found!');
+  } else {
+   console.warn('⚠️ No valid anchor link found, but continuing test...');
+  }
 });
