@@ -4,20 +4,24 @@ import { Page, expect } from "@playwright/test";
  * Waits for a new tab (popup) that opens to a dynamic URL.
  * Returns the new page object for further actions.
  */
-export async function waitForDynamicPage(page: Page): Promise<Page> {
+// prettier-ignore
+export const waitForDynamicPage = async (page: Page): Promise<{popup: Page; newUrl: string}> => {
   const popup = await page.waitForEvent("popup");
 
   // Wait for minimal page load
-  await popup.waitForLoadState("load", { timeout: 6000 });
+  await popup.waitForLoadState("load", { timeout: 10000 });
 
   // Ensure the URL matches pattern: /md/{digits}.html
-  await popup.waitForURL(/.*\/md\/\d+\.html/);
+  await popup.waitForURL(/.*\/md\/\d+\.html/, { timeout: 10000 });
 
-  console.log("Dynamic Page URL:", popup.url());
+  // Now get the URL string
+  const newUrl = popup.url();
+
+  console.log("Dynamic Page URL:", newUrl);
 
   // Assert the URL pattern again for safety
   await expect(popup).toHaveURL(/.*\/md\/\d+\.html/);
 
   // Return the popup page for further interactions
-  return popup;
-}
+  return {popup, newUrl};
+};

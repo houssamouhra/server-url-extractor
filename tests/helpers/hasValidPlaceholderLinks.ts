@@ -1,70 +1,127 @@
 import { Page } from "@playwright/test";
+import { saveLinksToJson } from "./exportToFile";
 
 // prettier-ignore
-export const checkForUrlInPlaceholders = async (newPage: Page): Promise<boolean> => {
-  let foundValidUrl = false;
+export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> => {
+  const placeholderLinks: string[] = [];
+  const batchLinks: string[] = [];
+  const batchSize = 10;
 
-  // Expand dropdown if toggle exists
-  const toggleLocator = newPage.locator("a.dropdown-toggle").nth(2);
+  const toggles = popup.locator("a.dropdown-toggle");
+  const toggleCount = await toggles.count();
 
-  const toggleVisible = await toggleLocator.isVisible();
-  console.log(`📌 Dropdown toggle visibility: ${toggleVisible}`);
+  if (toggleCount < 3) {
+    console.warn(
+      `⚠️ Only ${toggleCount} toggles found. nth(2) does not exist.`
+    );
+    return placeholderLinks;
+  }
 
-  const toggleCount = await toggleLocator.count();
-  if (toggleCount > 0) {
-    const toggleVisible = await toggleLocator.isVisible();
-    console.log(`Dropdown toggle exists: true | Visible: ${toggleVisible}`);
+  const toggleLocator = toggles.nth(2);
 
-    if (toggleVisible) {
+  try {
+    await toggleLocator.waitFor({ state: "visible", timeout: 5000 });
+    const isVisible = await toggleLocator.isVisible();
+    console.log(`Dropdown toggle [nth(2)] Visible: ${isVisible}`);
+
+    if (isVisible) {
       await toggleLocator.click({ force: true });
-      console.log("✅ Dropdown menu expanded to reveal additional placeholders.");
+      console.log("✅ Dropdown menu expanded!");
+      await popup.waitForSelector('[id^="placeholders-tab-click-4"]', {
+        timeout: 3000,
+      });
     } else {
-      console.log("⚠️ Dropdown toggle exists but is not visible. Placeholders 5+ may not be reachable!");
+      console.warn("⚠️ nth(2) toggle is not visible.");
+      return placeholderLinks;
     }
-  } else {
-    console.log("⚠️ Dropdown toggle not found at all!");
+  } catch {
+    console.warn("⚠️ nth(2) toggle exists but not visible in time.");
+    return placeholderLinks;
   }
 
   // Get total number of placeholder tabs dynamically
-  const placeholderTabs = await newPage
-    .locator('[id^="placeholders-tab-click-"]')
-    .elementHandles();
-  const totalTabs = placeholderTabs.length;
-
+  const placeholderTabs = popup.locator('[id^="placeholders-tab-click-"]');
+  const totalTabs = await placeholderTabs.count();
   console.log(`✅ Found ${totalTabs} placeholder tabs.`);
 
+  const urlMatch = popup.url().match(/md\/(\d+)\.html/);
+  const baseId = urlMatch ? urlMatch[1] : "unknown";
+
   for (let i = 1; i <= totalTabs; i++) {
+    if (i >= 4) {
+      // Re-click toggle to open dropdown again
+      await toggleLocator.click({ force: true });
+      // Wait a moment for dropdown to expand properly
+      await popup.waitForTimeout(300);
+    }
+
     const placeholderTabSelector = `#placeholders-tab-click-${i}`;
     const textareaSelector = `#placeholder${i}`;
 
-    const placeholderTabLocator = newPage.locator(placeholderTabSelector);
-    const textareaLocator = newPage.locator(textareaSelector);
+    try {
+      await popup.waitForSelector(placeholderTabSelector, { timeout: 3000 });
+      const placeholderTabLocator = popup.locator(placeholderTabSelector);
+      const textareaLocator = popup.locator(textareaSelector);
 
-    // Check if the textarea is visible before clicking
-    if (!(await placeholderTabLocator.isVisible())) {
-      console.log(`⚠️ Placeholder tab ${i} is not visible before the toggle is active`);
+      await placeholderTabLocator.scrollIntoViewIfNeeded();
+      await placeholderTabLocator.waitFor({ state: "visible", timeout: 5000 });
+
+      // Click the tag to show the textarea
+      await placeholderTabLocator.click();
+
+      // Wait for textarea to be visible
+      await textareaLocator.waitFor({ state: "visible", timeout: 3000 });
+
+      const textareaContent = await textareaLocator.evaluate((el) =>
+        el ? (el as HTMLTextAreaElement).value : ""
+      );
+
+      // Check if the textarea content contains a valid URL
+      const domainLikeRegex = /(https?:\/\/|\/\/)[^\s"']+|www\.[^\s"']+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi;
+
+
+      const matches = textareaContent.match(domainLikeRegex) || [];
+      matches.forEach((link) => {
+        const cleanLink = link.trim();
+        if (cleanLink) {
+          batchLinks.push(link);
+          placeholderLinks.push(link);
+        }
+      });
+
+
+      // Log every batch save or every batch size reached
+      const isBatchReady = i % batchSize === 0 || i === totalTabs;
+      if (isBatchReady && batchLinks.length > 0) {
+        const id = `${baseId}_batch_${Math.ceil(i / batchSize)}`;
+
+        console.log(`Base ID: ${baseId}`);
+        console.log(
+          `Saving batch with ${batchLinks.length} links as ID: ${id}`
+        );
+        await saveLinksToJson("output.json", id, batchLinks);
+        console.log(`✅ Saved batch ${id} with ${batchLinks.length} links`);
+
+        console.log(`Tab ${i}: textarea length ${textareaContent.length}`);
+        console.log(`Processing placeholder tab ${i} of ${totalTabs}`);
+        console.log(`placeholderLinks total: ${placeholderLinks.length}`);
+
+        batchLinks.length = 0; // Clear batch for next cycle
+        await popup.waitForTimeout(100); // Prevent memory spike
+      }
+      // Memory check every 10 tabs
+      if (i % 10 === 0) {
+        const memory = process.memoryUsage();
+        console.log(
+          `🧠 Memory check at tab ${i}: RSS ${Math.round(
+            memory.rss / 1024 / 1024
+          )} MB`
+        );
+      }
+    } catch (error) {
+      console.warn(`⚠️ Skipping placeholder tab ${i} due to error: ${error}`);
       continue;
     }
-
-    // Click the tag to show the textarea
-    await placeholderTabLocator.click();
-
-    // Wait for textarea to be visible
-    await textareaLocator.waitFor({ state: "visible" });
-
-    const textareaContent = await textareaLocator.evaluate((el) => (el as HTMLTextAreaElement).value);
-
-    // Check if the textarea content contains a valid URL
-    const domainLikeRegex =/https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i;
-    const hasDomainText = domainLikeRegex.test(textareaContent);
-
-    if (hasDomainText) {
-      console.log(`✅ Found valid link in placeholder${i}!`);
-      foundValidUrl = true;
-    } else {
-      console.log(`⚠️ No valid link found in placeholder${i}, continuing.`);
-    }
   }
-
-  return foundValidUrl;
+  return placeholderLinks;
 };
