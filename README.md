@@ -50,8 +50,8 @@ This project automates extraction, validation, and batch saving of URLs from dyn
 - Matches protocol-relative URLs starting with //.
 
 ## Dependencies
-[Playwright](https://playwright.dev/) — For browser automation and page interaction.
-[Node.js](https://nodejs.org/en) fs and path modules — For file operations.
+- [Playwright](https://playwright.dev/) — For browser automation and page interaction.
+- [Node.js](https://nodejs.org/en) fs and path modules — For file operations.
 
 
 ## Usage
