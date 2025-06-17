@@ -27,9 +27,13 @@ export const saveLinksToJson = async (filePath: string, id: string, links: strin
     }
   }
 
+  // Remove duplicate links
+  const uniqueLinks = Array.from(new Set(links));
+
+
   // Format links into object like { link1: "url", link2: "url", ... }
   const linksObject: { [key: string]: string } = {};
-  links.forEach((link, index) => {
+  uniqueLinks.forEach((link, index) => {
     linksObject[`link${index + 1}`] = link;
   });
 

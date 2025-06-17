@@ -4,6 +4,7 @@ import { waitForDynamicPage } from "./helpers/waitForDynamicPage";
 import { checkForRealAnchorInTextarea } from "./helpers/hasValidAnchorLinks";
 import { checkForUrlInPlaceholders } from "./helpers/hasValidPlaceholderLinks";
 import { checkPreviousMdUrlsInSameTab } from "./helpers/checkPreviousMdUrls";
+import link from "../output.json";
 
 test.setTimeout(1200000); // 20 minutes
 
