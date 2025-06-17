@@ -11,9 +11,7 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
   const toggleCount = await toggles.count();
 
   if (toggleCount < 3) {
-    console.warn(
-      `⚠️ Only ${toggleCount} toggles found. nth(2) does not exist.`
-    );
+    console.warn(`⚠️ Only ${toggleCount} toggles found. nth(2) does not exist.` );
     return placeholderLinks;
   }
 
@@ -77,8 +75,7 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
       );
 
       // Check if the textarea content contains a valid URL
-      const domainLikeRegex = /(https?:\/\/|\/\/)[^\s"']+|www\.[^\s"']+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi;
-
+      const domainLikeRegex = /(?:(?:https?:\/\/|\/\/|www\.)[^\s"']+\.(?:com|net|org|de|info|co|io|gov|edu|uk|us|biz|ru|cn|au|ca)(?:[^\s"']*)|[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.(?:com|net|org|de|info|co|io|gov|edu|uk|us|biz|ru|cn|au|ca))/g
 
       const matches = textareaContent.match(domainLikeRegex) || [];
       matches.forEach((link) => {
@@ -96,9 +93,7 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
         const id = `${baseId}_batch_${Math.ceil(i / batchSize)}`;
 
         console.log(`Base ID: ${baseId}`);
-        console.log(
-          `Saving batch with ${batchLinks.length} links as ID: ${id}`
-        );
+        console.log(`Saving batch with ${batchLinks.length} links as ID: ${id}`);
         await saveLinksToJson("output.json", id, batchLinks);
         console.log(`✅ Saved batch ${id} with ${batchLinks.length} links`);
 
@@ -112,10 +107,7 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
       // Memory check every 10 tabs
       if (i % 10 === 0) {
         const memory = process.memoryUsage();
-        console.log(
-          `🧠 Memory check at tab ${i}: RSS ${Math.round(
-            memory.rss / 1024 / 1024
-          )} MB`
+        console.log(`🧠 Memory check at tab ${i}: RSS ${Math.round(memory.rss / 1024 / 1024)} MB`
         );
       }
     } catch (error) {
