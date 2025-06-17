@@ -75,7 +75,7 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
       );
 
       // Check if the textarea content contains a valid URL
-      const domainLikeRegex = /(?:(?:https?:\/\/|\/\/|www\.)[^\s"']+\.(?:com|net|org|de|info|co|io|gov|edu|uk|us|biz|ru|cn|au|ca)(?:[^\s"']*)|[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.(?:com|net|org|de|info|co|io|gov|edu|uk|us|biz|ru|cn|au|ca))/g
+      const domainLikeRegex = /\b(?:(?:https?:\/\/|\/\/|www\.)?[a-zA-Z0-9.-]+\.(?:com|net|org|de|info|co|io|gov|edu|uk|us|biz|ru|cn|au|ca)(?:[^\s"']*)?)/g
 
       const matches = textareaContent.match(domainLikeRegex) || [];
       matches.forEach((link) => {

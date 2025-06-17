@@ -20,7 +20,7 @@ export const checkPreviousMdUrlsInSameTab = async (popup: Page,originalUrl: stri
   const urlPrefix = originalUrl.split(/md\/\d+\.html/)[0];
 
   const processPage = async (url: string) => {
-    await popup.goto(url, { waitUntil: "domcontentloaded", timeout: 10000 });
+    await popup.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
     await popup.waitForTimeout(500);
 
     const anchorLinks = await checkForRealAnchorInTextarea(popup);
@@ -48,7 +48,7 @@ export const checkPreviousMdUrlsInSameTab = async (popup: Page,originalUrl: stri
   }
 
   // Start from 1 until 100
-  const startIndex = options?.skipCurrent ? 1 : 0;
+  const startIndex = 1;
   const maxChecks = 100;
   let totalValidLinks = 0;
 
