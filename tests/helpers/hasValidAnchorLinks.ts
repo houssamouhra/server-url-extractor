@@ -9,7 +9,6 @@ export const checkForRealAnchorInTextarea = async (newPage: Page): Promise<strin
 
   // Regex: Skip any hrefs that include [placeholder]
   const realUrlAnchorRegex = /<a\s+href=["'](?![^"']*\[placeholder)([^"']+\.[a-z]{2,}[^"']*)["']/gi;
-  // const hasRealUrl = realUrlAnchorRegex.test(textareaContent);
 
 const anchorLinks: string[] = [];
 let match: RegExpExecArray | null;

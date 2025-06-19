@@ -90,11 +90,10 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
       // Log every batch save or every batch size reached
       const isBatchReady = i % batchSize === 0 || i === totalTabs;
       if (isBatchReady && batchLinks.length > 0) {
-        const id = `${baseId}_batch_${Math.ceil(i / batchSize)}`;
+        const id = `${baseId}_drop_${Math.ceil(i / batchSize)}`;
 
         console.log(`Base ID: ${baseId}`);
-        console.log(`Saving batch with ${batchLinks.length} links as ID: ${id}`);
-        await saveLinksToJson("output.json", id, batchLinks);
+        await saveLinksToJson<string>("dropLinks.json", id, batchLinks);
         console.log(`✅ Saved batch ${id} with ${batchLinks.length} links`);
 
         console.log(`Tab ${i}: textarea length ${textareaContent.length}`);
@@ -115,5 +114,6 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
       continue;
     }
   }
-  return placeholderLinks;
+  const uniquePlaceholderLinks = Array.from(new Set(placeholderLinks));
+  return uniquePlaceholderLinks;
 };

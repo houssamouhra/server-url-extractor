@@ -4,11 +4,9 @@ import { waitForDynamicPage } from "./helpers/waitForDynamicPage";
 import { checkForRealAnchorInTextarea } from "./helpers/hasValidAnchorLinks";
 import { checkForUrlInPlaceholders } from "./helpers/hasValidPlaceholderLinks";
 import { checkPreviousMdUrlsInSameTab } from "./helpers/checkPreviousMdUrls";
-import link from "../output.json";
 
-test.setTimeout(1200000); // 20 minutes
-
-test.describe(() => {
+test.describe("Scraping Tests", () => {
+  test.setTimeout(1200000); // 20 minutes
   // prettier-ignore
   test.skip(({ browserName }) => browserName !== "chromium", "Skipping test on non-chromium browsers");
 
@@ -88,9 +86,7 @@ test.describe(() => {
 
     const hasRealAnchor = await checkForRealAnchorInTextarea(popup);
 
-    hasRealAnchor
-      ? console.log("✅ Valid anchor link found!")
-      : console.log("⚠️ No valid anchor link found, but continuing test...");
+    hasRealAnchor ? console.log("✅ Valid anchor link found!") : console.log("⚠️ No valid anchor link found, but continuing test...");
 
     const linksWereSaved  = await checkForUrlInPlaceholders(popup);
     expect(linksWereSaved).toBeTruthy();
