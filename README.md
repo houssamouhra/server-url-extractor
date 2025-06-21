@@ -93,13 +93,15 @@ npm install
 ```
 
 ### 2. Set up your environment
-```powershell
+<pre>
+  <code>
+```bash
 cp data/dropLinks.example.json data/dropLinks.json
 cp data/validatedLinks.example.json data/validatedLinks.json
-```
-```powershell
 cp .env.example .env
 ```
+</code>
+</pre>
 And define:
 ```ini
 SERVER_EMAIL=your@email.com
