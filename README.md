@@ -88,16 +88,16 @@ Automates extraction, validation, and batch-saving of URLs (from placeholders an
 ```
 ## 🚀 Usage
 ### 1. Install dependencies
-```bash
+```powershell
 npm install
 ```
 
 ### 2. Set up your environment
-```bash
+```powershell
 cp data/dropLinks.example.json data/dropLinks.json
 cp data/validatedLinks.example.json data/validatedLinks.json
 ```
-```bash
+```powershell
 cp .env.example .env
 ```
 And define:
@@ -108,11 +108,11 @@ SERVER_PASSWORD=yourPassword
 
 ### 3. Run Tests
 Headless:
-```bash
+```powershell
 npx playwright test
 ```
 Headed:
-```bash
+```powershell
 npx playwright test --headed
 ```
 
