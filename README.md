@@ -82,7 +82,7 @@ Automates extraction, validation, and batch-saving of URLs (from placeholders an
 │   └── helpers/               ← Utility functions
 │   
 ├── .env.example               ← Safe env template
-├── run-tests.bat              ← Double-click to run both scraping and validation tests via Windows Terminal
+├── run-tests.bat              ← Double-click to run both tests
 ```
 
 
