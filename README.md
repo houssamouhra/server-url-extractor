@@ -88,7 +88,7 @@ Automates extraction, validation, and batch-saving of URLs (from placeholders an
 
 ## 🚀 Usage
 ### 1. Install dependencies
-```powershell
+```bash
 npm install
 ```
 
@@ -109,11 +109,11 @@ SERVER_PASSWORD=yourPassword
 
 ### 3. Run Tests
 Headless:
-```powershell
+```bash
 npx playwright test
 ```
 Headed:
-```powershell
+```bash
 npx playwright test --headed
 ```
 
