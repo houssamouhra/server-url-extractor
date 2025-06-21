@@ -1,8 +1,7 @@
 # Server URL Extractor & Validator
 
 Automates extraction, validation, and batch-saving of URLs (from placeholders and anchor tags) inside dynamically generated web pages using Playwright. Designed for efficient link processing, duplicate prevention, and secure test automation.
-
-
+---
 
 ## 🔧 Features
 
@@ -17,8 +16,7 @@ Automates extraction, validation, and batch-saving of URLs (from placeholders an
 - **Secure credential injection** using `.env` variables for login automation
 - **Memory usage tracking** during heavy processing.
 - **Detailed console logging** for debugging and monitoring progress.
-
-
+---
 
 ## ✅ Core Tasks Done
 
@@ -55,7 +53,7 @@ Automates extraction, validation, and batch-saving of URLs (from placeholders an
 - Introduced `.env` config for secure credentials (`SERVER_EMAIL`, `SERVER_PASSWORD`).
 - Included `.env.example` for team usage without exposing secrets.
 - Uses `.env` credentials in Playwright login tests with strict TypeScript handling.
-
+---
 
 
 ## 🔁 Regex Details
@@ -72,7 +70,7 @@ Automates extraction, validation, and batch-saving of URLs (from placeholders an
 - Full URLs starting with `http://` or `https://`
 - Protocol-relative URLs like `//example.com`
 - `www.` prefixed URLs
-
+---
 
 ## 📁 Project Structure
 ```
@@ -86,6 +84,8 @@ Automates extraction, validation, and batch-saving of URLs (from placeholders an
 ├── .env.example               ← Safe env template
 ├── run-tests.bat              ← Double-click to run both scraping and validation tests via Windows Terminal
 ```
+---
+
 ## 🚀 Usage
 ### 1. Install dependencies
 ```powershell
@@ -115,7 +115,7 @@ Headed:
 ```powershell
 npx playwright test --headed
 ```
-
+---
 ## 🧪 Sample Output
 - `dropLinks.json`: Stores batches like `123_drop_1`
 - `validatedLinks.json`: Stores validation results with status codes and redirects
