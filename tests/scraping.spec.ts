@@ -1,18 +1,21 @@
 import { test, expect } from "@playwright/test";
 import { login } from "./helpers/login";
+import dotenv from "dotenv";
 import { waitForDynamicPage } from "./helpers/waitForDynamicPage";
 import { checkForRealAnchorInTextarea } from "./helpers/hasValidAnchorLinks";
 import { checkForUrlInPlaceholders } from "./helpers/hasValidPlaceholderLinks";
 import { checkPreviousMdUrlsInSameTab } from "./helpers/checkPreviousMdUrls";
+dotenv.config();
 
+const serverEmail = process.env.SERVER_EMAIL as string;
+const serverPassword = process.env.SERVER_PASSWORD as string;
+
+// prettier-ignore
 test.describe("Scraping Tests", () => {
   test.setTimeout(1200000); // 20 minutes
-  // prettier-ignore
   test.skip(({ browserName }) => browserName !== "chromium", "Skipping test on non-chromium browsers");
 
-  // prettier-ignore
-  // Click on server link and redirect to monitoring users page to copy urls/domain name on multiple textareas
-  test("Click to the server link and redirect to monitoring users", async ({page}) => {
+  test("Click to the server link and redirect to monitoring users", async ({ page }) => {
     // Go to the main URL of the application
     await page.goto("http://37.27.113.240:4043/");
 
@@ -20,15 +23,13 @@ test.describe("Scraping Tests", () => {
     await page.waitForURL("**/auth/login.html");
 
     // Perform login using provided credentials
-    await login(page, "Houssam@enjoy.com", "Gt0572R5EM2h");
+    await login(page, serverEmail, serverPassword);
 
     // Wait until redirected to the send-process production page
     await page.waitForURL("**/production/send-process.html");
 
     // Assert that the "MTA Drops Monitor" link is visible on the page
-    await expect(
-      page.getByRole("link", { name: "MTA Drops Monitor" })
-    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "MTA Drops Monitor" })).toBeVisible();
 
     // Click on the "MTA Drops Monitor" link
     await page.getByRole("link", { name: "MTA Drops Monitor" }).click();
@@ -86,9 +87,9 @@ test.describe("Scraping Tests", () => {
 
     const hasRealAnchor = await checkForRealAnchorInTextarea(popup);
 
-    hasRealAnchor ? console.log("✅ Valid anchor link found!") : console.log("⚠️ No valid anchor link found, but continuing test...");
+    hasRealAnchor ? console.log("Valid anchor link found!") : console.log("⚠️ No valid anchor link found, but continuing test...");
 
-    const linksWereSaved  = await checkForUrlInPlaceholders(popup);
+    const linksWereSaved = await checkForUrlInPlaceholders(popup);
     expect(linksWereSaved).toBeTruthy();
 
     // Run your decrementing URL checks starting from the current URL

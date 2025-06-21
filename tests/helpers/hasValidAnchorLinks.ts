@@ -8,7 +8,7 @@ export const checkForRealAnchorInTextarea = async (newPage: Page): Promise<strin
   const textareaContent = await textareaLocator.evaluate((el) => (el as HTMLTextAreaElement).value);
 
   // Regex: Skip any hrefs that include [placeholder]
-  const realUrlAnchorRegex = /<a\s+href=["'](?![^"']*\[placeholder)([^"']+\.[a-z]{2,}[^"']*)["']/gi;
+  const realUrlAnchorRegex = /<a\s+href=["']((?![^"']*\[[^\]]*\])[^"']+\.[a-z]{2,}[^"']*)["']/gi;
 
 const anchorLinks: string[] = [];
 let match: RegExpExecArray | null;
@@ -19,6 +19,6 @@ while ((match = realUrlAnchorRegex.exec(textareaContent)) !== null) {
   }
 }
   // Check if the it found a valid URL or not
-  console.log(anchorLinks.length ? "✅ Found anchor link!" : "❌ No anchor link found!");
+  console.log(anchorLinks.length ? "Found anchor link!" : "No anchor link found!");
   return anchorLinks;
 };

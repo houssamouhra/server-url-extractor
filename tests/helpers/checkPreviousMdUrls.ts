@@ -12,7 +12,7 @@ export const checkPreviousMdUrlsInSameTab = async (popup: Page,originalUrl: stri
   const match = originalUrl.match(/md\/(\d+)\.html/);
 
   if (!match || !match[1]) {
-    console.log("❌ Could not extract the MD number from URL!");
+    console.log("Could not extract the MD number from URL!");
     return;
   }
 
@@ -31,19 +31,19 @@ export const checkPreviousMdUrlsInSameTab = async (popup: Page,originalUrl: stri
 
   // If skipCurrent is false or undefined, check the original URL first
   if (!options?.skipCurrent) {
-    console.log(`🚀 Checking original URL first: ${originalUrl}`);
+    console.log(`Checking original URL first: ${originalUrl}`);
 
     try {
       const { anchorLinks, placeholderLinks } = await processPage(originalUrl);
       const allLinks = [...placeholderLinks, ...anchorLinks];
 
       if (allLinks.length > 0) {
-        console.log(`✅ Found valid content at ${originalUrl}`);
+        console.log(`Found valid content at ${originalUrl}`);
       } else {
-        console.log(`❌ No valid content found at ${originalUrl}`);
+        console.log(`No valid content found at ${originalUrl}`);
       }
     } catch (error) {
-      console.log(`⚠️ Failed to load or process ${originalUrl}:`, error);
+      console.log(`Failed to load or process ${originalUrl}:`, error);
     }
   }
 
@@ -57,37 +57,35 @@ export const checkPreviousMdUrlsInSameTab = async (popup: Page,originalUrl: stri
     if (newNumber <= 0) break;
 
     const newUrl = `${urlPrefix}md/${newNumber}.html`;
-    console.log(`🚀 Navigating to: ${newUrl}`);
+    console.log(`Navigating to: ${newUrl}`);
 
     
     try {
       const { anchorLinks, placeholderLinks } = await processPage(newUrl);
       const allLinks = [...placeholderLinks, ...anchorLinks];
    
-      console.log(
-        anchorLinks.length > 0
-          ? `✅ [${i + 1}] Valid anchor link found at ${newUrl}!`
-          : `⚠️ [${i + 1}] No valid anchor link found at ${newUrl}, but continuing test...`
+      console.log(anchorLinks.length > 0
+          ? `[${i + 1}] Valid anchor link found at ${newUrl}!`
+          : `[${i + 1}] No valid anchor link found at ${newUrl}, but continuing test...`
       );
 
-      console.log(
-        placeholderLinks.length > 0
-          ? `✅ [${i + 1}] Valid placeholder link found at ${newUrl}!`
-          : `⚠️ [${i + 1}] No valid placeholder link found at ${newUrl}, but continuing test...`
+      console.log(placeholderLinks.length > 0
+          ? `[${i + 1}] Valid placeholder link found at ${newUrl}!`
+          : `[${i + 1}] No valid placeholder link found at ${newUrl}, but continuing test...`
       );
 
       totalValidLinks += allLinks.length;
       console.log(`🔍 Total valid links found in all 100 checks: ${totalValidLinks}`);
 
       if (allLinks.length > 0) {
-        console.log(`✅ Found valid content at ${newUrl}`);
+        console.log(`Found valid content at ${newUrl}`);
       } else {
-        console.log(`❌ No valid content found at ${newUrl}`);
+        console.log(`No valid content found at ${newUrl}`);
       }
     } catch (error) {
-      console.log(`⚠️ Failed to load or process ${newUrl}:`, error);
+      console.log(`Failed to load or process ${newUrl}:`, error);
     }
   }
 
-  console.log(`🏁 Total valid links found in all ${maxChecks} checks: ${totalValidLinks}`);
+  console.log(`Total valid links found in all ${maxChecks} checks: ${totalValidLinks}`);
 };

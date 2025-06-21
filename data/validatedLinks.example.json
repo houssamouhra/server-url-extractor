@@ -1,0 +1,11 @@
+{
+  "batch": {
+    "link": {
+      "original": "https://example.com",
+      "status": 200,
+      "redirection": "https://example.com/",
+      "included": false,
+      "method": "curl"
+    }
+  }
+}
