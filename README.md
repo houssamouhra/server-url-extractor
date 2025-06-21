@@ -2,7 +2,7 @@
 
 Automates extraction, validation, and batch-saving of URLs (from placeholders and anchor tags) inside dynamically generated web pages using Playwright. Designed for efficient link processing, duplicate prevention, and secure test automation.
 
----
+
 
 ## 🔧 Features
 
@@ -18,7 +18,7 @@ Automates extraction, validation, and batch-saving of URLs (from placeholders an
 - **Memory usage tracking** during heavy processing.
 - **Detailed console logging** for debugging and monitoring progress.
 
----
+
 
 ## ✅ Core Tasks Done
 
@@ -56,7 +56,7 @@ Automates extraction, validation, and batch-saving of URLs (from placeholders an
 - Included `.env.example` for team usage without exposing secrets.
 - Uses `.env` credentials in Playwright login tests with strict TypeScript handling.
 
----
+
 
 ## 🔁 Regex Details
 
