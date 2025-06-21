@@ -2,7 +2,7 @@
 
 Automates extraction, validation, and batch-saving of URLs (from placeholders and anchor tags) inside dynamically generated web pages using Playwright. Designed for efficient link processing, duplicate prevention, and secure test automation.
 
----
+--
 
 ## 🔧 Features
 
