@@ -1,8 +1,25 @@
 import { Page } from "@playwright/test";
 import { saveLinksToJson } from "./exportToFile";
+import { checkForRealAnchorInTextarea } from "./hasValidAnchorLinks";
+import path from "path";
+import fs from "fs";
+
+const dropLinksPath = path.resolve(__dirname, "../../data/dropLinks.json");
+// prettier-ignore
+const dropLinks = fs.existsSync(dropLinksPath) ? JSON.parse(fs.readFileSync(dropLinksPath, "utf-8")) : {};
 
 // prettier-ignore
 export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> => {
+  const urlMatch = popup.url().match(/md\/(\d+)\.html/);
+  const baseId = urlMatch ? urlMatch[1] : "unknown";
+
+  const isBaseIdAlreadyProcessed = Object.keys(dropLinks).some((key) => key.startsWith(baseId));
+
+  if (isBaseIdAlreadyProcessed) {
+    console.log(`Skipping entire drop ID ${baseId} – already processed.`);
+    return [];
+  }
+
   const placeholderLinks: string[] = [];
   const batchLinks: string[] = [];
   const batchSize = 10;
@@ -11,7 +28,7 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
   const toggleCount = await toggles.count();
 
   if (toggleCount < 3) {
-    console.warn(`⚠️ Only ${toggleCount} toggles found. nth(2) does not exist.` );
+    console.warn(`Only ${toggleCount} toggles found. nth(2) does not exist.`);
     return placeholderLinks;
   }
 
@@ -24,26 +41,26 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
 
     if (isVisible) {
       await toggleLocator.click({ force: true });
-      console.log("✅ Dropdown menu expanded!");
-      await popup.waitForSelector('[id^="placeholders-tab-click-4"]', {
-        timeout: 3000,
-      });
+      console.log("Dropdown menu expanded!");
+      await popup.waitForSelector('[id^="placeholders-tab-click-4"]', {timeout: 3000});
     } else {
-      console.warn("⚠️ nth(2) toggle is not visible.");
+      console.warn("nth(2) toggle is not visible.");
       return placeholderLinks;
     }
   } catch {
-    console.warn("⚠️ nth(2) toggle exists but not visible in time.");
+    console.warn("nth(2) toggle exists but not visible in time.");
     return placeholderLinks;
   }
 
   // Get total number of placeholder tabs dynamically
   const placeholderTabs = popup.locator('[id^="placeholders-tab-click-"]');
   const totalTabs = await placeholderTabs.count();
-  console.log(`✅ Found ${totalTabs} placeholder tabs.`);
+  console.log(`Found ${totalTabs} placeholder tabs.`);
 
-  const urlMatch = popup.url().match(/md\/(\d+)\.html/);
-  const baseId = urlMatch ? urlMatch[1] : "unknown";
+  // Skip if ANY drop batch for this baseId already exists
+
+  const uniquePlaceholderLinks = new Set<string>();
+  let batchCount = 0;
 
   for (let i = 1; i <= totalTabs; i++) {
     if (i >= 4) {
@@ -70,50 +87,53 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
       // Wait for textarea to be visible
       await textareaLocator.waitFor({ state: "visible", timeout: 3000 });
 
-      const textareaContent = await textareaLocator.evaluate((el) =>
-        el ? (el as HTMLTextAreaElement).value : ""
-      );
+      const textareaContent = await textareaLocator.evaluate((el) => el ? (el as HTMLTextAreaElement).value : "");
 
       // Check if the textarea content contains a valid URL
-      const domainLikeRegex = /\b(?:(?:https?:\/\/|\/\/|www\.)?[a-zA-Z0-9.-]+\.(?:com|net|org|de|info|co|io|gov|edu|uk|us|biz|ru|cn|au|ca)(?:[^\s"']*)?)/g
+      const domainLikeRegex = /\b(?:(?:https?:\/\/|\/\/|www\.)?[a-zA-Z0-9.-]+\.(?:com|net|org|de|info|co|io|gov|edu|uk|us|biz|ru|cn|au|ca)(?:[^\s"']*)?)/g;
+
+      const batchSet = new Set<string>();
 
       const matches = textareaContent.match(domainLikeRegex) || [];
       matches.forEach((link) => {
         const cleanLink = link.trim();
-        if (cleanLink) {
-          batchLinks.push(link);
-          placeholderLinks.push(link);
+        if (cleanLink && !batchSet.has(cleanLink)) {
+          batchSet.add(cleanLink);
+          batchLinks.push(cleanLink);
+          uniquePlaceholderLinks.add(cleanLink);
         }
       });
-
 
       // Log every batch save or every batch size reached
       const isBatchReady = i % batchSize === 0 || i === totalTabs;
       if (isBatchReady && batchLinks.length > 0) {
-        const id = `${baseId}_drop_${Math.ceil(i / batchSize)}`;
+        batchCount++;
+        const id = `${baseId}_drop_${batchCount}`;
+        console.log(`DROP ID: ${baseId}`);
 
-        console.log(`Base ID: ${baseId}`);
-        await saveLinksToJson<string>("dropLinks.json", id, batchLinks);
-        console.log(`✅ Saved batch ${id} with ${batchLinks.length} links`);
+        // Extract anchor links and merge with batch
+        const anchorLinks = await checkForRealAnchorInTextarea(popup);
+        for (const anchorLink of anchorLinks) {
+          const cleanAnchor = anchorLink.trim();
+          if (cleanAnchor && !batchSet.has(cleanAnchor)) {
+            batchSet.add(cleanAnchor);
+            batchLinks.push(cleanAnchor);
+          }
+        }
 
-        console.log(`Tab ${i}: textarea length ${textareaContent.length}`);
-        console.log(`Processing placeholder tab ${i} of ${totalTabs}`);
-        console.log(`placeholderLinks total: ${placeholderLinks.length}`);
-
-        batchLinks.length = 0; // Clear batch for next cycle
-        await popup.waitForTimeout(100); // Prevent memory spike
+        await saveLinksToJson<string>("data/dropLinks.json", id, batchLinks);
+        console.log(`Saved new batch ${id} with ${batchLinks.length} links`);
       }
+
       // Memory check every 10 tabs
       if (i % 10 === 0) {
         const memory = process.memoryUsage();
-        console.log(`🧠 Memory check at tab ${i}: RSS ${Math.round(memory.rss / 1024 / 1024)} MB`
-        );
+        console.log(`Memory check at tab ${i}: RSS ${Math.round(memory.rss / 1024 / 1024)} MB`);
       }
     } catch (error) {
-      console.warn(`⚠️ Skipping placeholder tab ${i} due to error: ${error}`);
+      console.warn(`Skipping placeholder tab ${i} due to error: ${error}`);
       continue;
     }
   }
-  const uniquePlaceholderLinks = Array.from(new Set(placeholderLinks));
-  return uniquePlaceholderLinks;
+  return Array.from(uniquePlaceholderLinks);
 };

@@ -19,7 +19,7 @@ export const saveLinksToJson = async <T>(filePath: string,idOrData: string | { [
     }
   }
   // If the caller passed a full object (like validatedLinks.json writing)
-  if (typeof idOrData === "object" && idOrData !== null && !Array.isArray(idOrData)) {
+  if (typeof idOrData === "object" &&idOrData !== null && !Array.isArray(idOrData)) {
     for (const [id, newLinks] of Object.entries(idOrData)) {
       const existingGroup = allLinks[id] || {};
       allLinks[id] = { ...existingGroup, ...newLinks };
@@ -43,6 +43,13 @@ export const saveLinksToJson = async <T>(filePath: string,idOrData: string | { [
 
   // Write back to the file
   const tempPath = `${filePath}.tmp`;
-  await fs.promises.writeFile(tempPath, JSON.stringify(allLinks, null, 2), "utf-8");
+  const sortedLinks = Object.fromEntries(
+    Object.entries(allLinks).sort((a, b) => {
+      const aNum = parseInt(a[0].match(/\d+/)?.[0] || "0", 10);
+      const bNum = parseInt(b[0].match(/\d+/)?.[0] || "0", 10);
+      return bNum - aNum; // descending order
+    })
+  );
+  await fs.promises.writeFile(tempPath, JSON.stringify(sortedLinks, null, 2),"utf-8");
   await fs.promises.rename(tempPath, filePath);
 };

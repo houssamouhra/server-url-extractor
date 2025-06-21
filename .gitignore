@@ -5,3 +5,6 @@ node_modules/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+.env
+data/dropLinks.json
+data/validatedLinks.json
