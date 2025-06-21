@@ -75,7 +75,7 @@ Automates extraction, validation, and batch-saving of URLs (from placeholders an
 
 
 ## 📁 Project Structure
-
+```
 ├──/data
 │   ├── dropLinks.json         ← Extracted URLs
 │   ├── validatedLinks.json    ← Validated links with metadata
@@ -85,8 +85,7 @@ Automates extraction, validation, and batch-saving of URLs (from placeholders an
 │   └── helpers/               ← Utility functions
 ├── .env.example               ← Safe env template
 ├── run-tests.bat              ← Double-click to run both scraping and validation tests via Windows Terminal
-
-
+```
 ## 🚀 Usage
 ### 1. Install dependencies
 ```bash
