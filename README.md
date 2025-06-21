@@ -80,6 +80,7 @@ Automates extraction, validation, and batch-saving of URLs (from placeholders an
 │   ├── scraping.spec.ts       ← Drop parsing & link extractor
 │   ├── url-validation.spec.ts ← Link status & redirect checker
 │   └── helpers/               ← Utility functions
+│   
 ├── .env.example               ← Safe env template
 ├── run-tests.bat              ← Double-click to run both scraping and validation tests via Windows Terminal
 ```
