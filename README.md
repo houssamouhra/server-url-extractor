@@ -22,7 +22,7 @@ Automates extraction, validation, and batch-saving of URLs (from placeholders an
 
 ### 1. Link Extraction 
 - Extracted URLs from placeholders in textareas with regex, including http(s), www, domain names, and protocol-relative URLs (`//...`).
-- Developed a helper function to extract real anchor links from textarea content, ignoring placeholders.
+- Developed a helper function to extract both real anchor (`<a href="">`) links and placeholder links from textarea content.
 
 ### 2. Duplicate Handling 
 - Avoided duplicate URLs within each batch using a `Set`.
