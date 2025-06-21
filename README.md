@@ -75,6 +75,7 @@ Automates extraction, validation, and batch-saving of URLs (from placeholders an
 
 
 ## 📁 Project Structure
+
 ├──/data
 │   ├── dropLinks.json         ← Extracted URLs
 │   ├── validatedLinks.json    ← Validated links with metadata
