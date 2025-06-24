@@ -17,33 +17,33 @@ Built with resilience and scale in mind — perfect for processing large dataset
 - **Dual source extraction** from `<textarea>` placeholders and valid anchor `<a href="">` tags within each drop.
 - **Robust regex filters** to exclude placeholder and anchor patterns, targeting only real URLs with allowed TLDs and excluding false positives.
 - **Smart skipping** logic:
- - Skips scraping if a dropId is already present in `dropLinks.json`
- - Skips validation if a batchId is fully present in `validatedLinks.json`
+  - Skips scraping if a dropId is already present in `dropLinks.json`
+  - Skips validation if a batchId is fully present in `validatedLinks.json`
 - **Batch-based processing** saves links incrementally as `dropId_drop_N` batches to control memory and improve clarity.
 - **Duplicate-free batching**: avoids saving the same link twice within a batch.
 - **Status validation:**
- - Uses `curl` for fast, lightweight URL status checking
- - Automatically falls back to `Playwright` for rich browser-level checks if curl fails or gives uncertain output.
+  - Uses `curl` for fast, lightweight URL status checking
+  - Automatically falls back to `Playwright` for rich browser-level checks if curl fails or gives uncertain output.
 - **Redirection detection** compares normalized final URLs to identify real redirects and capture redirected_url.
 - **DNS error detection** classifies failures like ENOTFOUND, EAI_AGAIN, and treats them distinctly with zero status.
 - **Secure credential injection** using `.env` variables for login automation
 - **Memory usage tracking** logs RAM snapshots after every 10 placeholder tabs processed.
 - **Detailed console logging** helps monitor:
- - URL extraction steps
- - Status checks
- - Validation decisions (curl vs playwright)
- - Skip reasons and timing
+  - URL extraction steps
+  - Status checks
+  - Validation decisions (curl vs playwright)
+  - Skip reasons and timing
 - **Structured JSON output:**
- - Scraped links → `data/dropLinks.json`
- - Validated links → `data/validatedLinks.json`
- - Grouped by `batchId`, each link contains:
-  - `original`: source URL
-  - `status`: HTTP status code
-  - `redirection`: true/false
-  - `redirected_url`: final URL if redirection happened
-  - `included`: boolean match for known target IDs
-  - `method`: `"curl"` or `"playwright"`
-  - `error`: if present (e.g. `"DNS could not be resolved"`)
+  - Scraped links → `data/dropLinks.json`
+  - Validated links → `data/validatedLinks.json`
+  - Grouped by `batchId`, each link contains:
+   - `original`: source URL
+   - `status`: HTTP status code
+   - `redirection`: true/false
+   - `redirected_url`: final URL if redirection happened
+   - `included`: boolean match for known target IDs
+   - `method`: `"curl"` or `"playwright"`
+   - `error`: if present (e.g. `"DNS could not be resolved"`)
 
 
 
