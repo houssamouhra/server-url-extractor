@@ -1,5 +1,6 @@
 {
   "batch": {
     "link": "example.com"
-  }
+  },
+  "date": "dd-mm-yyyy hh:min"
 }
