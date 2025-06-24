@@ -37,13 +37,13 @@ Built with resilience and scale in mind — perfect for processing large dataset
   - Scraped links → `data/dropLinks.json`
   - Validated links → `data/validatedLinks.json`
   - Grouped by `batchId`, each link contains:
-   - `original`: source URL
-   - `status`: HTTP status code
-   - `redirection`: true/false
-   - `redirected_url`: final URL if redirection happened
-   - `included`: boolean match for known target IDs
-   - `method`: `"curl"` or `"playwright"`
-   - `error`: if present (e.g. `"DNS could not be resolved"`)
+    - `original`: source URL
+    - `status`: HTTP status code
+    - `redirection`: true/false
+    - `redirected_url`: final URL if redirection happened
+    - `included`: boolean match for known target IDs
+    - `method`: `"curl"` or `"playwright"`
+    - `error`: if present (e.g. `"DNS could not be resolved"`)
 
 
 
