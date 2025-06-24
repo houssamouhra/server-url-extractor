@@ -1,22 +1,27 @@
 import { Page } from "@playwright/test";
 import { saveLinksToJson } from "./exportToFile";
 import { checkForRealAnchorInTextarea } from "./hasValidAnchorLinks";
-import path from "path";
 import fs from "fs";
-
-const dropLinksPath = path.resolve(__dirname, "../../data/dropLinks.json");
-// prettier-ignore
-const dropLinks = fs.existsSync(dropLinksPath) ? JSON.parse(fs.readFileSync(dropLinksPath, "utf-8")) : {};
+import path from "path";
 
 // prettier-ignore
 export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> => {
   const urlMatch = popup.url().match(/md\/(\d+)\.html/);
   const baseId = urlMatch ? urlMatch[1] : "unknown";
 
-  const isBaseIdAlreadyProcessed = Object.keys(dropLinks).some((key) => key.startsWith(baseId));
+  // Load existing dropLinks
+  const dropLinksPath = path.resolve(__dirname, "../data/dropLinks.json");
+  const dropLinks: Record<string, any> = fs.existsSync(dropLinksPath)
+    ? JSON.parse(fs.readFileSync(dropLinksPath, "utf-8"))
+    : {};
 
-  if (isBaseIdAlreadyProcessed) {
-    console.log(`Skipping entire drop ID ${baseId} – already processed.`);
+  // Skip the entire drop if it's already processed
+  const alreadyExists = Object.keys(dropLinks).some((key) =>
+    key.startsWith(`${baseId}_drop_`)
+  );
+
+  if (alreadyExists) {
+    console.log(`Entire Drop ID ${baseId} already exists — skipping`);
     return [];
   }
 
@@ -42,7 +47,9 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
     if (isVisible) {
       await toggleLocator.click({ force: true });
       console.log("Dropdown menu expanded!");
-      await popup.waitForSelector('[id^="placeholders-tab-click-4"]', {timeout: 3000});
+      await popup.waitForSelector('[id^="placeholders-tab-click-4"]', {
+        timeout: 3000,
+      });
     } else {
       console.warn("nth(2) toggle is not visible.");
       return placeholderLinks;
@@ -87,10 +94,12 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
       // Wait for textarea to be visible
       await textareaLocator.waitFor({ state: "visible", timeout: 3000 });
 
-      const textareaContent = await textareaLocator.evaluate((el) => el ? (el as HTMLTextAreaElement).value : "");
+      const textareaContent = await textareaLocator.evaluate((el) =>
+        el ? (el as HTMLTextAreaElement).value : ""
+      );
 
       // Check if the textarea content contains a valid URL
-      const domainLikeRegex = /\b(?:(?:https?:\/\/|\/\/|www\.)?[a-zA-Z0-9.-]+\.(?:com|net|org|de|info|co|io|gov|edu|uk|us|biz|ru|cn|au|ca)(?:[^\s"']*)?)/g;
+      const domainLikeRegex = /\b(?:(?:https?:\/\/|\/\/|www\.)?[a-zA-Z0-9.-]+\.(?:com|net|org|de|info|co|io|gov|edu|uk|us|biz|ru|cn|au|ly|ca|se|me|li|in|moe|cc|cx|global|cl)(?:[^\s"']*)?)/g;
 
       const batchSet = new Set<string>();
 
@@ -128,7 +137,11 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
       // Memory check every 10 tabs
       if (i % 10 === 0) {
         const memory = process.memoryUsage();
-        console.log(`Memory check at tab ${i}: RSS ${Math.round(memory.rss / 1024 / 1024)} MB`);
+        console.log(
+          `Memory check at tab ${i}: RSS ${Math.round(
+            memory.rss / 1024 / 1024
+          )} MB`
+        );
       }
     } catch (error) {
       console.warn(`Skipping placeholder tab ${i} due to error: ${error}`);
