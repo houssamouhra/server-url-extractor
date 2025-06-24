@@ -103,6 +103,7 @@ Built with resilience and scale in mind — perfect for processing large dataset
 - Protocol-relative URLs (e.g. `//example.com/path`)
 - `www.`-prefixed URLs without protocol
 - Domain patterns ending in whitelisted TLDs like `.com`, `.net`, `.io`, `.li`, `.cl`, etc.
+
 🚫 Excludes:
 
 - False positives like `contact.first_name`, `Whew...You`, or bracketed template syntax
