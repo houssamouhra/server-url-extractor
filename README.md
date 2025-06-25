@@ -25,7 +25,7 @@ Built with resilience and scale in mind — perfect for processing large dataset
   - Uses `curl` for fast, lightweight URL status checking
   - Automatically falls back to `Playwright` for rich browser-level checks if curl fails or gives uncertain output.
 - **Redirection detection** compares normalized final URLs to identify real redirects and capture redirected_url.
-- **DNS error detection** classifies failures like ENOTFOUND, EAI_AGAIN, and treats them distinctly with zero status.
+- **DNS error detection** classifies failures like `ENOTFOUND`, `EAI_AGAIN`, and treats them distinctly with zero status.
 - **Secure credential injection** using `.env` variables for login automation
 - **Memory usage tracking** logs RAM snapshots after every 10 placeholder tabs processed.
 - **Detailed console logging** helps monitor:
