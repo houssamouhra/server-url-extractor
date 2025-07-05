@@ -1,8 +1,11 @@
 import { Page } from "@playwright/test";
 import { saveLinksToJson } from "./exportToFile";
 import { checkForRealAnchorInTextarea } from "./hasValidAnchorLinks";
+import { fileURLToPath } from "url";
 import fs from "fs";
 import path from "path";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // prettier-ignore
 export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> => {
@@ -99,7 +102,7 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
       );
 
       // Check if the textarea content contains a valid URL
-      const domainLikeRegex = /\b(?:(?:https?:\/\/|\/\/|www\.)?[a-zA-Z0-9.-]+\.(?:com|net|org|de|info|co|io|gov|edu|uk|us|biz|ru|cn|au|ly|ca|se|me|li|in|moe|cc|cx|global|cl)(?:[^\s"']*)?)/g;
+      const domainLikeRegex = /(?<!@)\b(?![a-zA-Z0-9.-]+@)(?:(?:https?:\/\/|\/\/|www\.)?[a-zA-Z0-9.-]+\.(?:com|net|org|de|info|co|io|gov|edu|uk|us|biz|ru|cn|au|ly|ca|se|me|li|in|moe|cc|cx|global|cl)(?:[^\s"']*)?)(?!@)/g;
 
       const batchSet = new Set<string>();
 

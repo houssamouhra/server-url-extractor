@@ -3,18 +3,25 @@
   "version": "1.0.0",
   "description": "",
   "main": "script.js",
-  "scripts": {},
+  "scripts": {
+    "build:css": "tailwindcss -i ./style.css -o ./dist/output.css --watch"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   ".cjs": "require",
   "devDependencies": {
     "@playwright/test": "^1.53.1",
-    "@types/node": "^24.0.1"
+    "@types/node": "^24.0.1",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.3.5"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "dotenv": "^16.5.0",
+    "express": "^5.1.0",
     "typescript": "^5.8.3"
   }
 }
