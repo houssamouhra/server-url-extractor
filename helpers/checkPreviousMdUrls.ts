@@ -1,8 +1,11 @@
 import { Page } from "@playwright/test";
 import { checkForUrlInPlaceholders } from "./hasValidPlaceholderLinks";
 import { checkForRealAnchorInTextarea } from "./hasValidAnchorLinks";
+import { fileURLToPath } from "url";
 import path from "path";
 import fs from "fs";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 /**
  * Goes to the current URL first
  * then to the previous 99 /md/xxxxx.html pages (decrementing) in the same tab,
@@ -22,7 +25,7 @@ export const checkPreviousMdUrlsInSameTab = async (popup: Page,originalUrl: stri
   const urlPrefix = originalUrl.split(/md\/\d+\.html/)[0];
 
   const processPage = async (url: string) => {
-    await popup.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
+    await popup.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
     await popup.waitForTimeout(500);
 
     const anchorLinks = await checkForRealAnchorInTextarea(popup);

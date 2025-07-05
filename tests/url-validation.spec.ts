@@ -1,10 +1,13 @@
 import { test } from "@playwright/test";
 import { exec } from "child_process";
 import { promisify } from "util";
-import links from "../data/dropLinks.json";
+import { fileURLToPath } from "url";
 import { saveLinksToJson } from "../helpers/exportToFile";
-import fs from "fs";
+import links from "../data/dropLinks.json" assert { type: "json" };
 import path from "path";
+import fs from "fs";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // prettier-ignore
 const validatedLinksPath = path.resolve(__dirname, "../data/validatedLinks.json");
@@ -46,11 +49,45 @@ const ids = [
   20352, 2421, 26,
 ];
 
-// prettier-ignore
-async function resolveWithCurl(url: string): Promise<{ status: number; resolved: string | null; errorCode?: string}> {
+async function resolveWithCurl(
+  url: string
+): Promise<{ status: number; resolved: string | null; errorCode?: string }> {
   try {
+    const isHtml = url.trim().toLowerCase().endsWith(".html");
+
+    if (isHtml) {
+      // Use raw HTML fetch for .html links (to catch JS redirection)
+      const jsCurlCommand = `curl --max-time 10 "${url}"`;
+      const { stdout } = await execAsync(jsCurlCommand);
+
+      // Try to extract JS redirection
+      const jsMatch = stdout.match(
+        /document\.location(?:\.href)?\s*=\s*['"]([^'"]+)['"]/i
+      );
+      const metaMatch = stdout.match(
+        /<meta[^>]+http-equiv=["']refresh["'][^>]+content=["'][^;]+;\s*url=([^"']+)["']/i
+      );
+
+      const extractedUrl = jsMatch?.[1] || metaMatch?.[1];
+
+      if (extractedUrl) {
+        // Step 3: follow extracted redirect to get final resolved URL + status
+        const redirectCurlCommand = `curl --max-time 10 -Ls -o NUL -w "%{http_code} %{url_effective}" "${extractedUrl}"`;
+        const { stdout: redirectOut } = await execAsync(redirectCurlCommand);
+
+        const match = redirectOut.trim().match(/^(\d{3})\s+(.+)$/);
+        if (match) {
+          const status = parseInt(match[1]);
+          const resolved = match[2].trim();
+          return { status, resolved };
+        }
+        return { status: 200, resolved: extractedUrl };
+      }
+      return { status: 200, resolved: url };
+    }
+
     const curlCommand = `curl --max-time 10 -Ls -o NUL -w "%{http_code} %{url_effective}" "${url}"`;
-    const { stdout } = await execAsync(curlCommand)
+    const { stdout } = await execAsync(curlCommand);
 
     const match = stdout.trim().match(/^(\d{3})\s+(.+)$/);
     if (!match) {
@@ -67,19 +104,85 @@ async function resolveWithCurl(url: string): Promise<{ status: number; resolved:
     };
   } catch (err: any) {
     console.warn(`curl threw error for ${url}: ${err.message}`);
-    return { status: 0, resolved: null, errorCode: err.code || "UNKNOWN"};
+    return { status: 0, resolved: null, errorCode: err.code || "UNKNOWN" };
   }
 }
 
-console.log("Validated links loaded:", Object.keys(validatedLinks).length);
+// Check for meaningful redirections
+const normalizePath = (path: string) =>
+  path.replace(/\/+$/, "").toLowerCase() || "/";
+const normalizeHost = (host: string) =>
+  host.replace(/^www\./, "").toLowerCase();
+
+const safePaths = new Set([
+  "/",
+  "/home",
+  "/dashboard",
+  "/login",
+  "/checkaccount.html",
+]);
+
+const safeHostPatterns: [RegExp, RegExp][] = [
+  [/^gmail\.com$/, /^accounts\.google\.com$/],
+  [/^google\.com$/, /^mail\.google\.com$/],
+  [/^icloud\.com$/, /^appleid\.apple\.com$/],
+  [/^housebeautiful\.co\.uk$/, /^www\.housebeautiful\.com$/],
+];
 
 // prettier-ignore
+const areHostsEquivalent = (hostA: string, hostB: string): boolean => {
+  const normalizedA = normalizeHost(hostA);
+  const normalizedB = normalizeHost(hostB);
+
+  return (normalizedA === normalizedB || safeHostPatterns.some(
+      ([patternA, patternB]) =>
+        (patternA.test(normalizedA) && patternB.test(normalizedB)) ||
+        (patternB.test(normalizedA) && patternA.test(normalizedB))
+    )
+  );
+};
+
+// prettier-ignore
+const isMeaningfulRedirect = (original: string, redirected: string): boolean => {
+  if (original === redirected) return false;
+
+  try {
+    const originalUrl = new URL(original);
+    const redirectedUrl = new URL(redirected);
+
+    const hostA = normalizeHost(originalUrl.hostname);
+    const hostB = normalizeHost(redirectedUrl.hostname);
+
+    const pathA = normalizePath(originalUrl.pathname);
+    const pathB = normalizePath(redirectedUrl.pathname);
+
+    const queryA = originalUrl.searchParams.toString();
+    const queryB = redirectedUrl.searchParams.toString();
+
+    const isSameHost = hostA === hostB;
+    const isInternalRedirect = areHostsEquivalent(hostA, hostB);
+
+    const isSafePathCombo =
+      (safePaths.has(pathA) && safePaths.has(pathB)) ||
+      (safePaths.has(pathA) && pathB === "/") ||
+      (pathA === "/" && safePaths.has(pathB));
+
+    const isSameQuery = queryA === queryB || (!queryA && !queryB);
+
+
+    return !((isSameHost || isInternalRedirect) && isSafePathCombo && isSameQuery);
+  } catch (err) {
+    return true; // If parsing fails, assume it's a redirect to be safe
+  }
+};
+
+console.log("Validated links loaded:", Object.keys(validatedLinks).length);
+
 test.describe.configure({ mode: "parallel" });
 test.describe("URL Accessibility Test with Output", () => {
   test.setTimeout(1200000);
 
   let totalTests = 0;
-  // prettier-ignore
   for (const [batchId, dataGroup] of Object.entries(typedLinks)) {
     // Skip test definition if already exists
     const allLinkKeys = Object.keys(
@@ -112,7 +215,16 @@ test.describe("URL Accessibility Test with Output", () => {
         let status = 0;
         let method = "curl";
         const now = new Date();
-        const formattedDate = `${String(now.getDate()).padStart(2,"0")}-${String(now.getMonth() + 1).padStart(2,"0")}-${now.getFullYear()} ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        const formattedDate = `${String(now.getDate()).padStart(
+          2,
+          "0"
+        )}-${String(now.getMonth() + 1).padStart(
+          2,
+          "0"
+        )}-${now.getFullYear()} ${String(now.getHours()).padStart(
+          2,
+          "0"
+        )}:${String(now.getMinutes()).padStart(2, "0")}`;
 
         function ensureBatchLinks(batchId: string) {
           if (!testResults[batchId]) {
@@ -127,36 +239,24 @@ test.describe("URL Accessibility Test with Output", () => {
 
         ensureBatchLinks(batchId);
 
-        // makes sure only real redirections are flagged, not cosmetic ones.
-        const normalizeUrl = (rawurl: string | null): string | null => {
-          if (!rawurl) return null;
-
-          try {
-            const url = new URL(rawurl.trim());
-
-            // Remove 'www.' if present
-            const hostname = url.hostname.replace(/^www\./, "");
-
-            // Normalize path (remove trailing slash unless it's root)
-            const path =
-              url.pathname === "/" ? "" : url.pathname.replace(/\/+$/, "");
-            const search = url.search;
-
-            return `${url.protocol}//${hostname}${path}${search}`;
-          } catch {
-            return rawurl.trim().replace(/\/+$/, "").toLowerCase(); // fallback
-          }
-        };
-
         // Try curl first
         console.log(`Trying curl for: ${finalUrl}`);
-        const { status: curlStatus, resolved: curlResolved, errorCode } = await resolveWithCurl(finalUrl);
+        const {
+          status: curlStatus,
+          resolved: curlResolved,
+          errorCode,
+        } = await resolveWithCurl(finalUrl);
         console.log(`curlResolved: ${curlResolved}, curlStatus: ${curlStatus}`);
 
         if (curlResolved && curlStatus < 400) {
-          const redirectionHappened =
+          const isServerRedirect = curlStatus >= 300 && curlStatus < 400;
+
+          const isSoftRedirect =
+            curlStatus === 200 &&
             curlResolved !== null &&
-            normalizeUrl(curlResolved) !== normalizeUrl(finalUrl);
+            isMeaningfulRedirect(finalUrl, curlResolved);
+
+          const redirectionHappened = isServerRedirect || isSoftRedirect;
           // success via curl
           testResults[batchId].links[linkKey] = {
             original: finalUrl,
@@ -170,8 +270,18 @@ test.describe("URL Accessibility Test with Output", () => {
           return;
         }
         // If curl gives a hard fail status, skip Playwright
-        if ([0, 403, 404, 429, 530].includes(curlStatus) || errorCode === "ENOTFOUND") {
-          const redirectionHappened = normalizeUrl(curlResolved) !== normalizeUrl(finalUrl);
+        if (
+          [0, 403, 404, 429, 530].includes(curlStatus) ||
+          errorCode === "ENOTFOUND"
+        ) {
+          const isServerRedirect = curlStatus >= 300 && curlStatus < 400;
+
+          const isSoftRedirect =
+            curlStatus === 200 &&
+            curlResolved !== null &&
+            isMeaningfulRedirect(finalUrl, curlResolved);
+
+          const redirectionHappened = isServerRedirect || isSoftRedirect;
 
           testResults[batchId].links[linkKey] = {
             original: finalUrl,
@@ -180,14 +290,18 @@ test.describe("URL Accessibility Test with Output", () => {
             redirected_url: redirectionHappened ? curlResolved : null,
             included: false,
             method: "curl",
-            error: errorCode === "ENOTFOUND" ? "DNS could not be resolved" : `curl gave status ${curlStatus}, skipping playwright`,
+            error:
+              errorCode === "ENOTFOUND"
+                ? "DNS could not be resolved"
+                : `curl gave status ${curlStatus}, skipping playwright`,
           };
           return;
         } else {
           // fallback to JS rendering if curl failed
           method = "playwright";
           try {
-            await Promise.race([(async () => {
+            await Promise.race([
+              (async () => {
                 const page = await browser.newPage();
                 const response = await page.goto(finalUrl, {
                   waitUntil: "load",
@@ -199,7 +313,10 @@ test.describe("URL Accessibility Test with Output", () => {
                 await page.close();
               })(),
               new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("Playwright timeout (hard limit)")),15000)
+                setTimeout(
+                  () => reject(new Error("Playwright timeout (hard limit)")),
+                  15000
+                )
               ),
             ]);
           } catch (err) {
@@ -210,9 +327,17 @@ test.describe("URL Accessibility Test with Output", () => {
 
         const included = ids.some((id) => resolved?.includes(String(id)));
         // this is the final browser-redirected URL
-        const redirectionHappened =
+        const isServerRedirect = status >= 300 && status < 400;
+
+        const isSoftRedirect =
+          status === 200 &&
           resolved !== null &&
-          normalizeUrl(resolved) !== normalizeUrl(finalUrl);
+          isMeaningfulRedirect(finalUrl, resolved);
+
+        const redirectionHappened =
+          (isServerRedirect || isSoftRedirect) &&
+          ![0, 403, 404].includes(status);
+
         testResults[batchId].links[linkKey] = {
           original: finalUrl,
           status,

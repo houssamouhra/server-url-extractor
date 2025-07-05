@@ -6,5 +6,6 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 .env
+/.history
 data/dropLinks.json
 data/validatedLinks.json
