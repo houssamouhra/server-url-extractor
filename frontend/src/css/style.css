@@ -1,0 +1,31 @@
+@import "tailwindcss";
+@import "tailwindcss-primeui";
+
+.p-tooltip-text {
+  @apply px-2 py-1 text-white bg-slate-700 text-xs rounded-md animate-flipup animate-duration-200;
+}
+
+.p-tooltip-arrow {
+  @apply animate-flipup;
+}
+
+:root {
+  --p-datepicker-date-selected-background: #82181a;
+  --p-datepicker-date-selected-color: #fff;
+  --p-datepicker-today-background: #fff7ed;
+  --p-datepicker-today-color: #b45309;
+
+  --p-datepicker-date-hover-background: #ffe4e6;
+  --p-datepicker-date-hover-color: #7f1d1d;
+
+  --p-datepicker-panel-shadow: 0 8px 20px rgba(0, 0, 0, 0.07);
+  --p-datepicker-transition-duration: 300ms;
+}
+
+.p-datepicker-clear-button {
+  @apply text-[#82181a] bg-[#ffe4e6] hover:text-white hover:bg-[#7f1d1d] font-medium px-3 py-1.5 rounded-md transition-all duration-300;
+}
+
+.p-datepicker-today-button {
+  @apply text-[#b45309] bg-[#fff7ed] hover:text-[#82181a] hover:bg-[#ffe4e6] font-medium px-3 py-1.5 rounded-md transition-all duration-300;
+}
