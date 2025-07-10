@@ -15,7 +15,7 @@ app.use(cors());
 
 // prettier-ignore
 app.get("/api/validated-links", async (req, res) => {
-  const filePath = path.join(__dirname, "../data/validatedLinks.json");
+  const filePath = path.join(__dirname, "../database/validatedLinks.json");
 
   try {
     await fs.access(filePath);
