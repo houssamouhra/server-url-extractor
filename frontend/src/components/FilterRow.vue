@@ -108,7 +108,7 @@
         }"
         :inputClass="[
           'text-xs px-2 py-[8px] bg-white/80 shadow-none rounded-xl hover:shadow-sm border border-gray-200',
-          'placeholder:font-normal placeholder:text-gray-400',
+          'placeholder:font-normal placeholder:text-neutral-500',
           'focus:ring-2  focus:ring-red-900/60 hover:bg-white transition-all duration-200',
           filters[col.key] ? 'ring-1 ring-amber-500' : '',
         ]"
