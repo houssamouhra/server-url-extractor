@@ -24,7 +24,7 @@
           <!-- ensure height for spinner center -->
           <thead class="sticky top-0 z-10 w-full backdrop-blur-xs border-white/10 rounded-2xl">
             <!-- Header Labels Row -->
-            <tr class="text-xs font-bold py-2 h-10 align-top bg-yellow-200/40 text-gray-800 uppercase rounded-2xl text-center tracking-wide">
+            <tr class="text-xs font-bold py-2 h-10 align-top bg-amber-200/40 text-gray-800 uppercase rounded-2xl text-center tracking-wide">
               <AnimatedTh
                 v-for="(col, index) in columns"
                 :key="col.key"
@@ -217,7 +217,7 @@ filters.value = {
 
 // prettier-ignore
 const columns = [
-  { key: "batchId", label: "Drop ID", class: "w-[130px] text-center" },
+  { key: "batchId", label: "Drop ID", class: "w-[140px] text-center" },
   { key: "date", type: "date",label: "Date", class: "w-[140px] text-center" },
   { key: "original", label: "Original URL"},
   { key: "status", label: "Status", class: "w-[110px] text-center" },
