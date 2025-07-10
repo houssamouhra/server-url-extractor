@@ -22,9 +22,7 @@ export const saveLinksToJson = async <T>(filePath: string,
     const yyyy = now.getFullYear();
     const mm = pad(now.getMonth() + 1);
     const dd = pad(now.getDate());
-    const hh = pad(now.getHours());
-    const min = pad(now.getMinutes());
-    return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
+    return `${dd}-${mm}-${yyyy}`;
   };
 
   if (fs.existsSync(filePath)) {

@@ -1,0 +1,98 @@
+{
+  "XXXXX": {
+    "links": {
+      "link1": {
+        "original": "https://example.com",
+        "status": 200,
+        "redirection": false,
+        "redirected_url": null,
+        "included": false,
+        "method": "curl"
+      },
+      "link2": {
+        "original": "https://example.com/N0Ta1iBb8A",
+        "status": 200,
+        "redirection": true,
+        "redirected_url": "https://www.example.com/o-rxgz-s07-8854ee56bb6b21bea62f2fc7ef8094b1",
+        "included": false,
+        "method": "curl"
+      },
+      "link3": {
+        "original": "https://example.com/xxxxx/xxx",
+        "status": 0,
+        "redirection": false,
+        "redirected_url": null,
+        "included": false,
+        "method": "curl",
+        "error": "curl gave status 0, skipping playwright"
+      },
+      "link4": {
+        "original": "https://explample.com/retet/ads",
+        "status": 0,
+        "redirection": false,
+        "redirected_url": null,
+        "included": false,
+        "method": "curl",
+        "error": "curl gave status 0, skipping playwright"
+      }
+    },
+    "date": "08-07-2025"
+  },
+  "YYYYY": {
+    "links": {
+      "link1": {
+        "original": "https://explample.com/wqwdqw/qwdqwdd",
+        "status": 200,
+        "redirection": false,
+        "redirected_url": null,
+        "included": false,
+        "method": "curl"
+      },
+      "link2": {
+        "original": "https://explample.com/efwdfoj/rgoremv.html",
+        "status": 200,
+        "redirection": true,
+        "redirected_url": "https://www.example.com/o-rxgz-s07-8854ee56bb6b21bea62f2fc7ef8094b1",
+        "included": false,
+        "method": "curl"
+      },
+      "link3": {
+        "original": "https//:explample.com/qwfomreg",
+        "status": 0,
+        "redirection": false,
+        "redirected_url": null,
+        "included": false,
+        "method": "curl",
+        "error": "curl gave status 0, skipping playwright"
+      },
+      "link4": {
+        "original": "https://explample.com/ktkt",
+        "status": 0,
+        "redirection": false,
+        "redirected_url": null,
+        "included": false,
+        "method": "curl",
+        "error": "curl gave status 0, skipping playwright"
+      },
+      "link5": {
+        "original": "https://explample.com/rthero",
+        "status": 0,
+        "redirection": false,
+        "redirected_url": null,
+        "included": false,
+        "method": "curl",
+        "error": "curl gave status 0, skipping playwright"
+      },
+      "link6": {
+        "original": "https://explample.com/heroFefe",
+        "status": 0,
+        "redirection": false,
+        "redirected_url": null,
+        "included": false,
+        "method": "curl",
+        "error": "curl gave status 0, skipping playwright"
+      }
+    },
+    "date": "08-07-2025"
+  }
+}

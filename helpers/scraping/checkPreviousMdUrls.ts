@@ -1,6 +1,6 @@
 import { Page } from "@playwright/test";
-import { checkForUrlInPlaceholders } from "./hasValidPlaceholderLinks";
-import { checkForRealAnchorInTextarea } from "./hasValidAnchorLinks";
+import { checkForUrlInPlaceholders } from "./extractPlaceholderLinks";
+import { checkForRealAnchorInTextarea } from "./extractAnchorLinks";
 import { fileURLToPath } from "url";
 import path from "path";
 import fs from "fs";

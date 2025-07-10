@@ -1,6 +1,6 @@
 import { Page } from "@playwright/test";
-import { saveLinksToJson } from "./exportToFile";
-import { checkForRealAnchorInTextarea } from "./hasValidAnchorLinks";
+import { saveLinksToJson } from "../json/exportToFile";
+import { checkForRealAnchorInTextarea } from "./extractAnchorLinks";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import path from "path";
@@ -68,7 +68,6 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
   console.log(`Found ${totalTabs} placeholder tabs.`);
 
   // Skip if ANY drop batch for this baseId already exists
-
   const uniquePlaceholderLinks = new Set<string>();
   let batchCount = 0;
 
