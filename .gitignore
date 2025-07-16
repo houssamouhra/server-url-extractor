@@ -9,3 +9,4 @@ node_modules/
 /.history
 database/dropLinks.json
 database/validatedLinks.json
+database/links.sqlite
