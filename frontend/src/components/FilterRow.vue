@@ -118,7 +118,7 @@
       <div v-else class="relative">
         <input
           v-model="filters[col.key]"
-          :ref="col.key === 'dropId' ? 'dropIdInput' : null"
+          :ref="col.key === 'dropId' ? 'dropIdInput' : undefined"
           :id="`filter-${col.key}`"
           :name="col.key"
           autocomplete="off"
@@ -157,7 +157,17 @@ import { onMounted, computed } from "vue";
 import { Icon } from "@iconify/vue";
 import DatePicker from "primevue/datepicker";
 
-const filters = defineModel<Record<string, string | Date | null>>("filters");
+const filters = defineModel<Record<string, string | Date | null>>("filters", {
+  default: () => ({
+    batchId: "",
+    date: "",
+    original: "",
+    status: "",
+    redirection: "",
+    redirected_url: "",
+    included: "",
+  }),
+});
 
 const { columns } = defineProps<{
   columns: {

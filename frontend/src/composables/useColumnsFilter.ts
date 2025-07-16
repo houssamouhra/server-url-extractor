@@ -6,8 +6,10 @@ dayjs.extend(customParseFormat);
 
 export const isFiltering = ref(false);
 
-export function useColumnFilters<T extends object>(dataInput: T[] | Ref<T[]>) {
-  const filters = ref<{
+export function useColumnFilters<T extends Record<string, any>>(
+  dataInput: T[] | Ref<T[]>
+) {
+  type FilterState = {
     batchId: string;
     date: string | Date;
     original: string;
@@ -15,7 +17,11 @@ export function useColumnFilters<T extends object>(dataInput: T[] | Ref<T[]>) {
     redirection: string;
     redirected_url: string;
     included: string;
-  }>({
+  };
+
+  type FilterKey = keyof FilterState;
+
+  const filters = ref<FilterState>({
     batchId: "",
     date: "",
     original: "",
@@ -90,6 +96,7 @@ export function useColumnFilters<T extends object>(dataInput: T[] | Ref<T[]>) {
           const cellDateFormatted = parseCellDate(cellRaw.toString());
           return cellDateFormatted === selectedDate;
         }
+
         const cell = cellRaw.toString().toLowerCase();
         return cell.includes(value.toString().toLowerCase());
       });
@@ -158,11 +165,11 @@ export function useColumnFilters<T extends object>(dataInput: T[] | Ref<T[]>) {
     totalPages,
     filteredData,
     paginatedData,
-    setFilter: (key: string, value: string) => {
-      filters.value[key] = value;
+    setFilter: (key: FilterKey, value: string | Date) => {
+      filters.value[key] = value as never;
     },
-    clearFilter: (key: string) => {
-      delete filters.value[key];
+    clearFilter: (key: FilterKey) => {
+      filters.value[key] = "" as never;
     },
   };
 }

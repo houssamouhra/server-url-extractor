@@ -24,7 +24,7 @@
           <!-- ensure height for spinner center -->
           <thead class="sticky top-0 z-10 w-full backdrop-blur-xs border-white/10 rounded-2xl">
             <!-- Header Labels Row -->
-            <tr class="text-xs font-bold py-2 h-10 align-top bg-amber-200/40 text-gray-800 uppercase rounded-2xl text-center tracking-wide">
+            <tr class="text-xs font-bold py-2 h-10 align-top bg-amber-200/40  text-gray-800 uppercase rounded-2xl text-center tracking-wide">
               <AnimatedTh
                 v-for="(col, index) in columns"
                 :key="col.key"
@@ -49,17 +49,17 @@
           <tbody v-if="paginatedLinks.length" class="text-[12px] divide-1">
             <tr
               v-for="(link, i) in paginatedLinks"
-              :key="link.url ?? i"
+              :key="`${link.batchId}-${link.linkKey}`"
               :class="[
                 getStripeClass(i, paginatedLinks),
                 'hover:bg-yellow-50 transition-colors duration-150',
               ]"
             >
               <!-- Divider line -->
-              <template v-if="i > 0 && getDropId(link.batchId) !== getDropId(links[i - 1].batchId)"></template>
+              <template v-if="i > 0 && link.batchId !== links[i - 1].batchId"></template>
 
               <td class="px-2 py-2 text-center font-bold">
-                {{ getDropId(link.batchId) }}
+                {{ link.batchId }}
               </td>
               <td class="px-2 py-2 text-center font-semibold">
                 {{ link.date }}
@@ -191,7 +191,20 @@ import Pagination from "@/components/Pagination.vue";
 import NotFoundFilter from "@/components/NotFoundFilter.vue";
 import { useColumnFilters } from "@/composables/useColumnsFilter";
 
-const links = ref([]);
+type LinkEntry = {
+  batchId: string;
+  linkKey: string;
+  date: string;
+  original: string;
+  status: number;
+  redirection: boolean;
+  redirected_url: string | null;
+  included: boolean;
+  method: string;
+  error?: string;
+};
+
+const links = ref<LinkEntry[]>([]);
 const copied = ref<string | null>(null);
 
 const {
@@ -227,8 +240,6 @@ const columns = [
 ];
 
 const isLoading = ref(true);
-
-const getDropId = (batchId) => batchId.split("_")[0];
 
 const resetFilters = () => {
   filters.value = Object.fromEntries(
@@ -282,11 +293,19 @@ onMounted(async () => {
 
   const fetchData = (async () => {
     try {
-      const res = await fetch("http://localhost:3000/api/validated-links");
+      const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+      const res = await fetch(`${BASE_URL}/api/validated-links`);
+
       const data = await res.json();
+
+      // Sort by batchId descending (latest drops first)
+      data.sort((a: any, b: any) => Number(b.batchId) - Number(a.batchId));
+
       links.value = data.map((item: any) => ({
         ...item,
-        date: item.date.split(" ")[0], // keeps only '02-07-2025'
+        redirection: Boolean(item.redirection),
+        included: Boolean(item.included),
+        status: Number(item.status),
       }));
     } catch (err) {
       console.error("Failed to fetch links:", err);

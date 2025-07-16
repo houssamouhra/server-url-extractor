@@ -1,44 +1,16 @@
 import { test } from "@playwright/test";
-import { exec } from "child_process";
-import { promisify } from "util";
-import { fileURLToPath } from "url";
-import { saveLinksToJson } from "../helpers/exportToFile";
-import links from "../data/dropLinks.json" assert { type: "json" };
+import sqlite3 from "sqlite3";
+import { insertInChunks } from "../helpers/db/insertInChunks";
+import { ValidatedLink } from "../helpers/db/saveValidatedLinksToDb";
+import { resolveWithCurl } from "../helpers/network/resolveWithCurl";
+import { isMeaningfulRedirect } from "../helpers/network/redirectAnalysis";
+import { open } from "sqlite";
 import path from "path";
-import fs from "fs";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
-// prettier-ignore
-const validatedLinksPath = path.resolve(__dirname, "../data/validatedLinks.json");
-const execAsync = promisify(exec);
+const dbPath = path.resolve("database/links.sqlite");
 
-type LinkDetails = {
-  original: string;
-  status: number;
-  redirection: boolean;
-  redirected_url: string | null;
-  included: true | false;
-  method: "curl" | "playwright";
-  error?: string;
-};
-
-type DropLinkGroup =
-  | { links: { [key: string]: string }; date: string }
-  | { [key: string]: string };
-
-const typedLinks: { [batchId: string]: DropLinkGroup } = links;
-
-const validatedLinks: {
-  [batchId: string]: {
-    links: { [linkKey: string]: LinkDetails };
-    date: string;
-  };
-} = fs.existsSync(validatedLinksPath)
-  ? JSON.parse(fs.readFileSync(validatedLinksPath, "utf-8"))
-  : {};
-
-const testResults: typeof validatedLinks = {};
+const allValidatedLinksByBatch: Record<string, ValidatedLink[]> = {};
+const validatedCounts: Record<string, number> = {};
 
 const ids = [
   351435, 351863, 351862, 351864, 351861, 351902, 351727, 350689, 351901,
@@ -49,203 +21,110 @@ const ids = [
   20352, 2421, 26,
 ];
 
-async function resolveWithCurl(
-  url: string
-): Promise<{ status: number; resolved: string | null; errorCode?: string }> {
-  try {
-    const isHtml = url.trim().toLowerCase().endsWith(".html");
+const db = await open({ filename: dbPath, driver: sqlite3.Database });
 
-    if (isHtml) {
-      // Use raw HTML fetch for .html links (to catch JS redirection)
-      const jsCurlCommand = `curl --max-time 10 "${url}"`;
-      const { stdout } = await execAsync(jsCurlCommand);
+const countRows: { batchId: string; count: number }[] = await db.all(`
+  SELECT batchId, COUNT(*) as count
+  FROM validated_links
+  GROUP BY batchId
+`);
 
-      // Try to extract JS redirection
-      const jsMatch = stdout.match(
-        /document\.location(?:\.href)?\s*=\s*['"]([^'"]+)['"]/i
-      );
-      const metaMatch = stdout.match(
-        /<meta[^>]+http-equiv=["']refresh["'][^>]+content=["'][^;]+;\s*url=([^"']+)["']/i
-      );
-
-      const extractedUrl = jsMatch?.[1] || metaMatch?.[1];
-
-      if (extractedUrl) {
-        // Step 3: follow extracted redirect to get final resolved URL + status
-        const redirectCurlCommand = `curl --max-time 10 -Ls -o NUL -w "%{http_code} %{url_effective}" "${extractedUrl}"`;
-        const { stdout: redirectOut } = await execAsync(redirectCurlCommand);
-
-        const match = redirectOut.trim().match(/^(\d{3})\s+(.+)$/);
-        if (match) {
-          const status = parseInt(match[1]);
-          const resolved = match[2].trim();
-          return { status, resolved };
-        }
-        return { status: 200, resolved: extractedUrl };
-      }
-      return { status: 200, resolved: url };
-    }
-
-    const curlCommand = `curl --max-time 10 -Ls -o NUL -w "%{http_code} %{url_effective}" "${url}"`;
-    const { stdout } = await execAsync(curlCommand);
-
-    const match = stdout.trim().match(/^(\d{3})\s+(.+)$/);
-    if (!match) {
-      console.warn(`Could not parse curl output for ${url}`);
-      return { status: 0, resolved: null };
-    }
-
-    const status = parseInt(match[1]);
-    const resolved = match[2].trim();
-
-    return {
-      status,
-      resolved: resolved || null,
-    };
-  } catch (err: any) {
-    console.warn(`curl threw error for ${url}: ${err.message}`);
-    return { status: 0, resolved: null, errorCode: err.code || "UNKNOWN" };
-  }
+for (const row of countRows) {
+  validatedCounts[row.batchId] = row.count;
 }
 
-// Check for meaningful redirections
-const normalizePath = (path: string) =>
-  path.replace(/\/+$/, "").toLowerCase() || "/";
-const normalizeHost = (host: string) =>
-  host.replace(/^www\./, "").toLowerCase();
+const rows: {
+  batchId: string;
+  linkKey: string;
+  validatedAt: string;
+  originalUrl: string;
+  status: number;
+  redirection: boolean;
+  redirected_url: string;
+  included: boolean;
+}[] = await db.all(`SELECT
+  d.id as linkKey,
+  d.batchId,
+  d.originalUrl,
+  d.scrapedAt,
+  v.status,
+  v.redirection,
+  v.redirected_url,
+  v.included,
+  v.method,
+  v.error,
+  v.validatedAt
+FROM drop_links d
+LEFT JOIN validated_links v
+  ON d.batchId = v.batchId AND d.id = v.linkKey;`);
 
-const safePaths = new Set([
-  "/",
-  "/home",
-  "/dashboard",
-  "/login",
-  "/checkaccount.html",
-]);
+await db.close();
 
-const safeHostPatterns: [RegExp, RegExp][] = [
-  [/^gmail\.com$/, /^accounts\.google\.com$/],
-  [/^google\.com$/, /^mail\.google\.com$/],
-  [/^icloud\.com$/, /^appleid\.apple\.com$/],
-  [/^housebeautiful\.co\.uk$/, /^www\.housebeautiful\.com$/],
-];
-
-// prettier-ignore
-const areHostsEquivalent = (hostA: string, hostB: string): boolean => {
-  const normalizedA = normalizeHost(hostA);
-  const normalizedB = normalizeHost(hostB);
-
-  return (normalizedA === normalizedB || safeHostPatterns.some(
-      ([patternA, patternB]) =>
-        (patternA.test(normalizedA) && patternB.test(normalizedB)) ||
-        (patternB.test(normalizedA) && patternA.test(normalizedB))
-    )
-  );
-};
-
-// prettier-ignore
-const isMeaningfulRedirect = (original: string, redirected: string): boolean => {
-  if (original === redirected) return false;
-
-  try {
-    const originalUrl = new URL(original);
-    const redirectedUrl = new URL(redirected);
-
-    const hostA = normalizeHost(originalUrl.hostname);
-    const hostB = normalizeHost(redirectedUrl.hostname);
-
-    const pathA = normalizePath(originalUrl.pathname);
-    const pathB = normalizePath(redirectedUrl.pathname);
-
-    const queryA = originalUrl.searchParams.toString();
-    const queryB = redirectedUrl.searchParams.toString();
-
-    const isSameHost = hostA === hostB;
-    const isInternalRedirect = areHostsEquivalent(hostA, hostB);
-
-    const isSafePathCombo =
-      (safePaths.has(pathA) && safePaths.has(pathB)) ||
-      (safePaths.has(pathA) && pathB === "/") ||
-      (pathA === "/" && safePaths.has(pathB));
-
-    const isSameQuery = queryA === queryB || (!queryA && !queryB);
-
-
-    return !((isSameHost || isInternalRedirect) && isSafePathCombo && isSameQuery);
-  } catch (err) {
-    return true; // If parsing fails, assume it's a redirect to be safe
+// Group by batchId
+const groupedByBatch: Record<string, Record<string, string>> = {};
+for (const row of rows) {
+  if (!groupedByBatch[row.batchId]) {
+    groupedByBatch[row.batchId] = {};
   }
-};
+  groupedByBatch[row.batchId][row.linkKey] = row.originalUrl;
+}
 
-console.log("Validated links loaded:", Object.keys(validatedLinks).length);
+function pushValidatedLink(batchId: string, link: ValidatedLink) {
+  if (!allValidatedLinksByBatch[batchId]) {
+    allValidatedLinksByBatch[batchId] = [];
+  }
+  allValidatedLinksByBatch[batchId].push(link);
+}
+
+const today = new Date();
+const validatedAt = `${String(today.getDate()).padStart(2, "0")}-${String(
+  today.getMonth() + 1
+).padStart(2, "0")}-${today.getFullYear()}`;
 
 test.describe.configure({ mode: "parallel" });
+
 test.describe("URL Accessibility Test with Output", () => {
   test.setTimeout(1200000);
 
   let totalTests = 0;
-  for (const [batchId, dataGroup] of Object.entries(typedLinks)) {
-    // Skip test definition if already exists
-    const allLinkKeys = Object.keys(
-      "links" in dataGroup
-        ? dataGroup.links
-        : (dataGroup as { [key: string]: string })
-    );
 
-    const alreadyValidatedCount = allLinkKeys.filter(
-      (key) => validatedLinks[batchId]?.links?.[key]
-    ).length;
+  // Define tests using grouped data
+  for (const [batchId, linkEntries] of Object.entries(groupedByBatch)) {
+    const totalLinks = Object.keys(linkEntries).length;
+    const validatedSoFar = validatedCounts[batchId] || 0;
 
-    if (alreadyValidatedCount === allLinkKeys.length) {
-      console.log(`⏭ Fully validated batch: ${batchId}`);
+    if (validatedSoFar >= totalLinks) {
+      console.log(
+        `⏭ Fully validated batch: ${batchId} (${validatedSoFar}/${totalLinks})`
+      );
       continue;
     }
 
-    totalTests += allLinkKeys.length;
-
-    const linkEntries =
-      "links" in dataGroup && typeof dataGroup.links === "object"
-        ? dataGroup.links
-        : (dataGroup as { [key: string]: string });
-
     for (const [linkKey, url] of Object.entries(linkEntries)) {
-      const finalUrl = url.startsWith("http") ? url : "https://" + url;
+      if (typeof url !== "string" || !url.trim()) {
+        console.warn(
+          `⚠️ Skipping invalid URL for batch ${batchId}, key ${linkKey}`
+        );
+        continue;
+      }
 
-      test(`(${batchId}) ${linkKey}: ${finalUrl}`, async ({ browser }) => {
+      const normalizedUrl = url.startsWith("http") ? url : "https://" + url;
+      totalTests++;
+
+      test(`(${batchId}) ${linkKey}: ${normalizedUrl}`, async ({ browser }) => {
+        // (put your existing test body logic here — no need to change it).
+
         let resolved: string | null = null;
         let status = 0;
         let method = "curl";
-        const now = new Date();
-        const formattedDate = `${String(now.getDate()).padStart(
-          2,
-          "0"
-        )}-${String(now.getMonth() + 1).padStart(
-          2,
-          "0"
-        )}-${now.getFullYear()} ${String(now.getHours()).padStart(
-          2,
-          "0"
-        )}:${String(now.getMinutes()).padStart(2, "0")}`;
-
-        function ensureBatchLinks(batchId: string) {
-          if (!testResults[batchId]) {
-            testResults[batchId] = {
-              links: {},
-              date: formattedDate,
-            };
-          } else if (!testResults[batchId].links) {
-            testResults[batchId].links = {};
-          }
-        }
-
-        ensureBatchLinks(batchId);
 
         // Try curl first
-        console.log(`Trying curl for: ${finalUrl}`);
+        console.log(`Trying curl for: ${normalizedUrl}`);
         const {
           status: curlStatus,
           resolved: curlResolved,
           errorCode,
-        } = await resolveWithCurl(finalUrl);
+        } = await resolveWithCurl(normalizedUrl);
         console.log(`curlResolved: ${curlResolved}, curlStatus: ${curlStatus}`);
 
         if (curlResolved && curlStatus < 400) {
@@ -254,18 +133,24 @@ test.describe("URL Accessibility Test with Output", () => {
           const isSoftRedirect =
             curlStatus === 200 &&
             curlResolved !== null &&
-            isMeaningfulRedirect(finalUrl, curlResolved);
+            isMeaningfulRedirect(normalizedUrl, curlResolved);
 
           const redirectionHappened = isServerRedirect || isSoftRedirect;
+
           // success via curl
-          testResults[batchId].links[linkKey] = {
-            original: finalUrl,
+          pushValidatedLink(batchId, {
+            linkKey,
+            original: normalizedUrl,
             status: curlStatus,
             redirection: redirectionHappened,
             redirected_url: redirectionHappened ? curlResolved : null,
             included: ids.some((id) => curlResolved.includes(String(id))),
             method: "curl",
-          };
+            error:
+              resolved === null ? "timeout or navigation failure" : undefined,
+            validatedAt,
+          });
+
           // Skip to Playwright
           return;
         }
@@ -279,22 +164,27 @@ test.describe("URL Accessibility Test with Output", () => {
           const isSoftRedirect =
             curlStatus === 200 &&
             curlResolved !== null &&
-            isMeaningfulRedirect(finalUrl, curlResolved);
+            isMeaningfulRedirect(normalizedUrl, curlResolved);
 
           const redirectionHappened = isServerRedirect || isSoftRedirect;
+          const included =
+            !!curlResolved &&
+            ids.some((id) => curlResolved.includes(String(id)));
 
-          testResults[batchId].links[linkKey] = {
-            original: finalUrl,
+          pushValidatedLink(batchId, {
+            linkKey,
+            original: normalizedUrl,
             status: curlStatus,
             redirection: redirectionHappened,
             redirected_url: redirectionHappened ? curlResolved : null,
-            included: false,
+            included,
             method: "curl",
             error:
               errorCode === "ENOTFOUND"
                 ? "DNS could not be resolved"
                 : `curl gave status ${curlStatus}, skipping playwright`,
-          };
+            validatedAt,
+          });
           return;
         } else {
           // fallback to JS rendering if curl failed
@@ -303,7 +193,7 @@ test.describe("URL Accessibility Test with Output", () => {
             await Promise.race([
               (async () => {
                 const page = await browser.newPage();
-                const response = await page.goto(finalUrl, {
+                const response = await page.goto(normalizedUrl, {
                   waitUntil: "load",
                   timeout: 20000,
                 });
@@ -332,62 +222,39 @@ test.describe("URL Accessibility Test with Output", () => {
         const isSoftRedirect =
           status === 200 &&
           resolved !== null &&
-          isMeaningfulRedirect(finalUrl, resolved);
+          isMeaningfulRedirect(normalizedUrl, resolved);
 
         const redirectionHappened =
           (isServerRedirect || isSoftRedirect) &&
           ![0, 403, 404].includes(status);
 
-        testResults[batchId].links[linkKey] = {
-          original: finalUrl,
+        pushValidatedLink(batchId, {
+          linkKey,
+          original: normalizedUrl,
           status,
           redirection: redirectionHappened,
           redirected_url: redirectionHappened ? resolved : null,
           included,
-          method: "playwright",
+          method: "Playwright",
           ...(resolved === null && { error: "timeout or navigation failure" }),
-        };
-
+          validatedAt,
+        });
         if (status >= 400) {
           throw new Error(
-            `[${method}] failed or status ${status} for ${finalUrl}`
+            `[${method}] failed or status ${status} for ${normalizedUrl}`
           );
         }
       });
     }
   }
-  console.log(`💡 Number of tests to define: ${totalTests}`);
-});
 
-// prettier-ignore
-// This saves **once after all tests finish**, when Playwright closes:
-test.afterAll(async () => {
-  const formatted: {
-    [batchId: string]: {
-      links: { [key: string]: LinkDetails };
-      date: string;
-    };
-  } = {};
-
-  const merged = { ...validatedLinks };
-
-  for (const [batchId, { links, date }] of Object.entries(testResults)) {
-    if (!merged[batchId]) {
-      merged[batchId] = { links: {}, date };
+  test.afterAll(async () => {
+    for (const [batchId, links] of Object.entries(allValidatedLinksByBatch)) {
+      if (links.length > 0) {
+        await insertInChunks(batchId, links, 100);
+        console.log(`✅ Inserted ${links.length} links for batch ${batchId}`);
+      }
     }
-
-    Object.assign(merged[batchId].links, links);
-    formatted[batchId] = {
-      links: Object.fromEntries(
-        Object.entries(links).sort(([a], [b]) => {
-          const aNum = parseInt(a.replace("link", ""));
-          const bNum = parseInt(b.replace("link", ""));
-          return aNum - bNum;
-        })
-      ),
-      date,
-    };
-  }
-  await saveLinksToJson<LinkDetails>("data/validatedLinks.json", merged);
-  console.log("✅ All validated links exported with proper format.");
+  });
+  console.log(`💡 Number of tests to define: ${totalTests}`);
 });

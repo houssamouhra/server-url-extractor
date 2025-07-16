@@ -6,7 +6,7 @@
     @click="handleClick"
   >
     <Icon
-      icon="hugeicons:filter-reset"
+      icon="line-md:filter-remove-twotone"
       class="cursor-pointer text-[#625a42] hover:text-[#312d21] transition-transform group-hover:scale-105"
       width="24"
       height="24"

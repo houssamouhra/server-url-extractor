@@ -1,36 +1,43 @@
 import { Page } from "@playwright/test";
-import { saveLinksToJson } from "../json/exportToFile";
+import { insertIntoDropLinks } from "../db/saveDropLinksToDb";
 import { checkForRealAnchorInTextarea } from "./extractAnchorLinks";
-import { fileURLToPath } from "url";
-import fs from "fs";
+import sqlite3 from "sqlite3";
+import { open } from "sqlite";
 import path from "path";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
-// prettier-ignore
-export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> => {
+const dbPath = path.resolve("database/links.sqlite");
+
+export const checkForUrlInPlaceholders = async (
+  popup: Page
+): Promise<string[]> => {
   const urlMatch = popup.url().match(/md\/(\d+)\.html/);
   const baseId = urlMatch ? urlMatch[1] : "unknown";
 
+  // Guard clause: skip if baseId is not numeric
+  if (!/^\d+$/.test(baseId)) {
+    console.warn(`Invalid baseId: ${baseId}`);
+    return [];
+  }
+
+  const db = await open({ filename: dbPath, driver: sqlite3.Database });
+
   // Load existing dropLinks
-  const dropLinksPath = path.resolve(__dirname, "../data/dropLinks.json");
-  const dropLinks: Record<string, any> = fs.existsSync(dropLinksPath)
-    ? JSON.parse(fs.readFileSync(dropLinksPath, "utf-8"))
-    : {};
-
   // Skip the entire drop if it's already processed
-  const alreadyExists = Object.keys(dropLinks).some((key) =>
-    key.startsWith(`${baseId}_drop_`)
+  const existing = await db.get(
+    `SELECT COUNT(*) as count FROM drop_links WHERE batchId LIKE ?`,
+    [`${baseId}_%`]
   );
+  await db.close();
 
-  if (alreadyExists) {
-    console.log(`Entire Drop ID ${baseId} already exists — skipping`);
+  if (existing.count > 0) {
+    console.log(`❌ Drop ID ${baseId} already processed — skipping`);
     return [];
   }
 
   const placeholderLinks: string[] = [];
+  const collectedAnchorLinks: string[] = [];
+  const allUniqueLinks = new Set<string>();
   const batchLinks: string[] = [];
-  const batchSize = 10;
 
   const toggles = popup.locator("a.dropdown-toggle");
   const toggleCount = await toggles.count();
@@ -68,8 +75,6 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
   console.log(`Found ${totalTabs} placeholder tabs.`);
 
   // Skip if ANY drop batch for this baseId already exists
-  const uniquePlaceholderLinks = new Set<string>();
-  let batchCount = 0;
 
   for (let i = 1; i <= totalTabs; i++) {
     if (i >= 4) {
@@ -96,59 +101,97 @@ export const checkForUrlInPlaceholders = async (popup: Page): Promise<string[]> 
       // Wait for textarea to be visible
       await textareaLocator.waitFor({ state: "visible", timeout: 3000 });
 
-      const textareaContent = await textareaLocator.evaluate((el) =>
-        el ? (el as HTMLTextAreaElement).value : ""
+      const content = await textareaLocator.evaluate(
+        (el) => (el as HTMLTextAreaElement).value || el.textContent || ""
       );
 
       // Check if the textarea content contains a valid URL
-      const domainLikeRegex = /(?<!@)\b(?![a-zA-Z0-9.-]+@)(?:(?:https?:\/\/|\/\/|www\.)?[a-zA-Z0-9.-]+\.(?:com|net|org|de|info|co|io|gov|edu|uk|us|biz|ru|cn|au|ly|ca|se|me|li|in|moe|cc|cx|global|cl)(?:[^\s"']*)?)(?!@)/g;
+      const domainLikeRegex =
+        /(?<!@)\b(?:https?:\/\/|\/\/|www\.)?[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+\b(?:\/[^\s"']*)?/g;
 
-      const batchSet = new Set<string>();
+      const matches = content.match(domainLikeRegex) || [];
 
-      const matches = textareaContent.match(domainLikeRegex) || [];
-      matches.forEach((link) => {
+      const finalUrls = matches.filter((url) => {
+        // Heuristic: reject if URL has only one dot and both parts are short
+        const parts = url.split(".");
+        if (parts.length === 2) {
+          const [left, right] = parts;
+          if (left.length <= 3 && right.length <= 3) return false;
+        }
+
+        // Basic top-level domain validation
+        const tld = url.split(".").pop()?.toLowerCase();
+        const validTlds = [
+          "com",
+          "net",
+          "org",
+          "de",
+          "info",
+          "co",
+          "io",
+          "gov",
+          "edu",
+          "uk",
+          "us",
+          "biz",
+          "ru",
+          "cn",
+          "au",
+          "ly",
+          "ca",
+          "se",
+          "me",
+          "li",
+          "in",
+          "moe",
+          "cc",
+          "cx",
+          "global",
+          "cl",
+        ];
+        if (!validTlds.includes(tld || "")) return false;
+
+        return true;
+      });
+
+      finalUrls.forEach((link) => {
         const cleanLink = link.trim();
-        if (cleanLink && !batchSet.has(cleanLink)) {
-          batchSet.add(cleanLink);
+        if (cleanLink && !allUniqueLinks.has(cleanLink)) {
+          allUniqueLinks.add(cleanLink);
+          placeholderLinks.push(cleanLink);
           batchLinks.push(cleanLink);
-          uniquePlaceholderLinks.add(cleanLink);
         }
       });
 
-      // Log every batch save or every batch size reached
-      const isBatchReady = i % batchSize === 0 || i === totalTabs;
-      if (isBatchReady && batchLinks.length > 0) {
-        batchCount++;
-        const id = `${baseId}_drop_${batchCount}`;
-        console.log(`DROP ID: ${baseId}`);
-
-        // Extract anchor links and merge with batch
-        const anchorLinks = await checkForRealAnchorInTextarea(popup);
-        for (const anchorLink of anchorLinks) {
-          const cleanAnchor = anchorLink.trim();
-          if (cleanAnchor && !batchSet.has(cleanAnchor)) {
-            batchSet.add(cleanAnchor);
-            batchLinks.push(cleanAnchor);
-          }
+      // Extract anchor links and merge with batch
+      const anchorLinks = await checkForRealAnchorInTextarea(popup);
+      for (const anchorLink of anchorLinks) {
+        const cleanAnchor = anchorLink.trim();
+        if (cleanAnchor && !allUniqueLinks.has(cleanAnchor)) {
+          allUniqueLinks.add(cleanAnchor);
+          collectedAnchorLinks.push(cleanAnchor);
+          batchLinks.push(cleanAnchor);
         }
-
-        await saveLinksToJson<string>("data/dropLinks.json", id, batchLinks);
-        console.log(`Saved new batch ${id} with ${batchLinks.length} links`);
-      }
-
-      // Memory check every 10 tabs
-      if (i % 10 === 0) {
-        const memory = process.memoryUsage();
-        console.log(
-          `Memory check at tab ${i}: RSS ${Math.round(
-            memory.rss / 1024 / 1024
-          )} MB`
-        );
       }
     } catch (error) {
       console.warn(`Skipping placeholder tab ${i} due to error: ${error}`);
       continue;
     }
   }
-  return Array.from(uniquePlaceholderLinks);
+
+  // INSERT ONCE after accumulating all links from all placeholders
+  if (batchLinks.length > 0) {
+    try {
+      await insertIntoDropLinks(baseId, batchLinks);
+      console.log(
+        `✅ Inserted ${batchLinks.length} links for Drop ID ${baseId}`
+      );
+    } catch (err) {
+      console.error(`❌ Failed to insert Drop ID ${baseId}:`, err);
+    }
+  } else {
+    console.log(`⚠️ No valid links found for Drop ID ${baseId}`);
+  }
+
+  return Array.from(allUniqueLinks);
 };

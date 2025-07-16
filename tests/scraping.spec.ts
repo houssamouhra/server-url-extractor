@@ -1,10 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { login } from "../helpers/login";
+import { login } from "../helpers/scraping/login";
+import { waitForDynamicPage } from "../helpers/scraping/waitForDynamicPage";
+import { checkForRealAnchorInTextarea } from "../helpers/scraping/extractAnchorLinks";
+import { checkForUrlInPlaceholders } from "../helpers/scraping/extractPlaceholderLinks";
+import { checkPreviousMdUrlsInSameTab } from "../helpers/scraping/checkPreviousMdUrls";
 import dotenv from "dotenv";
-import { waitForDynamicPage } from "../helpers/waitForDynamicPage";
-import { checkForRealAnchorInTextarea } from "../helpers/hasValidAnchorLinks";
-import { checkForUrlInPlaceholders } from "../helpers/hasValidPlaceholderLinks";
-import { checkPreviousMdUrlsInSameTab } from "../helpers/checkPreviousMdUrls";
 dotenv.config();
 
 const serverEmail = process.env.SERVER_EMAIL as string;
