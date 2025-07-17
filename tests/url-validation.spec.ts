@@ -1,16 +1,23 @@
 import { test } from "@playwright/test";
 import sqlite3 from "sqlite3";
-import { insertInChunks } from "../helpers/db/insertInChunks";
-import { ValidatedLink } from "../helpers/db/saveValidatedLinksToDb";
-import { resolveWithCurl } from "../helpers/network/resolveWithCurl";
-import { isMeaningfulRedirect } from "../helpers/network/redirectAnalysis";
+import { insertInChunks } from "@db/insertInChunks";
+import { ValidatedLink } from "@db/saveValidatedLinksToDb";
+import { formatDate } from "@utils/formatDate";
+import { ValidationContext } from "@helpers/test-utils";
+import { loadDropLinkData } from "@helpers/db/loadDropLinks";
+import { loadValidatedCounts } from "@helpers/db/loadValidatedCounts";
+
+import {
+  prepareTestCases,
+  runValidation,
+  pushValidatedLink,
+} from "@helpers/test-utils";
+
 import { open } from "sqlite";
 import path from "path";
 
 const dbPath = path.resolve("database/links.sqlite");
-
-const allValidatedLinksByBatch: Record<string, ValidatedLink[]> = {};
-const validatedCounts: Record<string, number> = {};
+const db = await open({ filename: dbPath, driver: sqlite3.Database });
 
 const ids = [
   351435, 351863, 351862, 351864, 351861, 351902, 351727, 350689, 351901,
@@ -21,42 +28,8 @@ const ids = [
   20352, 2421, 26,
 ];
 
-const db = await open({ filename: dbPath, driver: sqlite3.Database });
-
-const countRows: { batchId: string; count: number }[] = await db.all(`
-  SELECT batchId, COUNT(*) as count
-  FROM validated_links
-  GROUP BY batchId
-`);
-
-for (const row of countRows) {
-  validatedCounts[row.batchId] = row.count;
-}
-
-const rows: {
-  batchId: string;
-  linkKey: string;
-  validatedAt: string;
-  originalUrl: string;
-  status: number;
-  redirection: boolean;
-  redirected_url: string;
-  included: boolean;
-}[] = await db.all(`SELECT
-  d.id as linkKey,
-  d.batchId,
-  d.originalUrl,
-  d.scrapedAt,
-  v.status,
-  v.redirection,
-  v.redirected_url,
-  v.included,
-  v.method,
-  v.error,
-  v.validatedAt
-FROM drop_links d
-LEFT JOIN validated_links v
-  ON d.batchId = v.batchId AND d.id = v.linkKey;`);
+const validatedCounts = await loadValidatedCounts(db);
+const rows = await loadDropLinkData(db);
 
 await db.close();
 
@@ -69,191 +42,68 @@ for (const row of rows) {
   groupedByBatch[row.batchId][row.linkKey] = row.originalUrl;
 }
 
-function pushValidatedLink(batchId: string, link: ValidatedLink) {
-  if (!allValidatedLinksByBatch[batchId]) {
-    allValidatedLinksByBatch[batchId] = [];
-  }
-  allValidatedLinksByBatch[batchId].push(link);
-}
+const validatedAt = formatDate();
 
-const today = new Date();
-const validatedAt = `${String(today.getDate()).padStart(2, "0")}-${String(
-  today.getMonth() + 1
-).padStart(2, "0")}-${today.getFullYear()}`;
+const testCases = prepareTestCases(groupedByBatch, validatedCounts);
+const allValidatedLinksByBatch: Record<string, ValidatedLink[]> = {};
+const context: ValidationContext = {
+  ids,
+  validatedAt,
+};
+
+const skippedBatches = Object.entries(validatedCounts).filter(
+  ([batchId, count]) =>
+    groupedByBatch[batchId] &&
+    count >= Object.keys(groupedByBatch[batchId]).length
+).length;
+
+console.log(`🔕 Skipped batches: ${skippedBatches}`);
 
 test.describe.configure({ mode: "parallel" });
 
 test.describe("URL Accessibility Test with Output", () => {
   test.setTimeout(1200000);
-
-  let totalTests = 0;
+  let totalInserted = 0;
+  console.log(`💡 Number of tests to define: ${testCases.length}`);
 
   // Define tests using grouped data
-  for (const [batchId, linkEntries] of Object.entries(groupedByBatch)) {
-    const totalLinks = Object.keys(linkEntries).length;
-    const validatedSoFar = validatedCounts[batchId] || 0;
+  for (const { batchId, linkKey, normalizedUrl } of testCases) {
+    test(`(${batchId}) ${linkKey}: ${normalizedUrl}`, async ({ browser }) => {
+      console.log(`🧪 Running: (${batchId}) ${linkKey}`);
 
-    if (validatedSoFar >= totalLinks) {
-      console.log(
-        `⏭ Fully validated batch: ${batchId} (${validatedSoFar}/${totalLinks})`
+      const result = await runValidation(
+        batchId,
+        linkKey,
+        normalizedUrl,
+        browser,
+        context
       );
-      continue;
-    }
 
-    for (const [linkKey, url] of Object.entries(linkEntries)) {
-      if (typeof url !== "string" || !url.trim()) {
-        console.warn(
-          `⚠️ Skipping invalid URL for batch ${batchId}, key ${linkKey}`
+      pushValidatedLink(allValidatedLinksByBatch, batchId, result);
+
+      if (result.status >= 400) {
+        console.error(
+          `❌ ${result.method} failed [${result.status}] for ${normalizedUrl}`
         );
-        continue;
+        throw new Error(
+          `[${result.method}] failed or status ${result.status} for ${normalizedUrl}`
+        );
+      } else {
+        console.log(
+          `✅ ${result.method} success [${result.status}] for ${normalizedUrl}`
+        );
       }
-
-      const normalizedUrl = url.startsWith("http") ? url : "https://" + url;
-      totalTests++;
-
-      test(`(${batchId}) ${linkKey}: ${normalizedUrl}`, async ({ browser }) => {
-        // (put your existing test body logic here — no need to change it).
-
-        let resolved: string | null = null;
-        let status = 0;
-        let method = "curl";
-
-        // Try curl first
-        console.log(`Trying curl for: ${normalizedUrl}`);
-        const {
-          status: curlStatus,
-          resolved: curlResolved,
-          errorCode,
-        } = await resolveWithCurl(normalizedUrl);
-        console.log(`curlResolved: ${curlResolved}, curlStatus: ${curlStatus}`);
-
-        if (curlResolved && curlStatus < 400) {
-          const isServerRedirect = curlStatus >= 300 && curlStatus < 400;
-
-          const isSoftRedirect =
-            curlStatus === 200 &&
-            curlResolved !== null &&
-            isMeaningfulRedirect(normalizedUrl, curlResolved);
-
-          const redirectionHappened = isServerRedirect || isSoftRedirect;
-
-          // success via curl
-          pushValidatedLink(batchId, {
-            linkKey,
-            original: normalizedUrl,
-            status: curlStatus,
-            redirection: redirectionHappened,
-            redirected_url: redirectionHappened ? curlResolved : null,
-            included: ids.some((id) => curlResolved.includes(String(id))),
-            method: "curl",
-            error:
-              resolved === null ? "timeout or navigation failure" : undefined,
-            validatedAt,
-          });
-
-          // Skip to Playwright
-          return;
-        }
-        // If curl gives a hard fail status, skip Playwright
-        if (
-          [0, 403, 404, 429, 530].includes(curlStatus) &&
-          curlResolved === normalizedUrl
-        ) {
-          const isServerRedirect = curlStatus >= 300 && curlStatus < 400;
-
-          const isSoftRedirect =
-            curlStatus === 200 &&
-            curlResolved !== null &&
-            isMeaningfulRedirect(normalizedUrl, curlResolved);
-
-          const redirectionHappened = isServerRedirect || isSoftRedirect;
-          const included =
-            !!curlResolved &&
-            ids.some((id) => curlResolved.includes(String(id)));
-
-          pushValidatedLink(batchId, {
-            linkKey,
-            original: normalizedUrl,
-            status: curlStatus,
-            redirection: redirectionHappened,
-            redirected_url: redirectionHappened ? curlResolved : null,
-            included,
-            method: "curl",
-            error:
-              errorCode === "ENOTFOUND"
-                ? "DNS could not be resolved"
-                : `curl gave status ${curlStatus}, skipping playwright`,
-            validatedAt,
-          });
-          return;
-        } else {
-          // fallback to JS rendering if curl failed
-          method = "playwright";
-          try {
-            await Promise.race([
-              (async () => {
-                const page = await browser.newPage();
-                const response = await page.goto(normalizedUrl, {
-                  waitUntil: "load",
-                });
-                await page.waitForTimeout(500);
-                resolved = page.url();
-                status = response?.status() ?? 0;
-                await page.close();
-              })(),
-              new Promise((_, reject) =>
-                setTimeout(
-                  () => reject(new Error("Playwright timeout (hard limit)")),
-                  15000
-                )
-              ),
-            ]);
-          } catch (err) {
-            resolved = null;
-            status = 0;
-          }
-        }
-
-        const included = ids.some((id) => resolved?.includes(String(id)));
-        // this is the final browser-redirected URL
-        const isServerRedirect = status >= 300 && status < 400;
-
-        const isSoftRedirect =
-          status === 200 &&
-          resolved !== null &&
-          isMeaningfulRedirect(normalizedUrl, resolved);
-
-        const redirectionHappened =
-          (isServerRedirect || isSoftRedirect) &&
-          ![0, 403, 404].includes(status);
-
-        pushValidatedLink(batchId, {
-          linkKey,
-          original: normalizedUrl,
-          status,
-          redirection: redirectionHappened,
-          redirected_url: redirectionHappened ? resolved : null,
-          included,
-          method: "playwright",
-          ...(resolved === null && { error: "timeout or navigation failure" }),
-          validatedAt,
-        });
-        if (status >= 400) {
-          throw new Error(
-            `[${method}] failed or status ${status} for ${normalizedUrl}`
-          );
-        }
-      });
-    }
+    });
   }
 
   test.afterAll(async () => {
     for (const [batchId, links] of Object.entries(allValidatedLinksByBatch)) {
       if (links.length > 0) {
         await insertInChunks(batchId, links, 100);
-        console.log(`✅ Inserted ${links.length} links for batch ${batchId}`);
+        console.log(`📦 Batch ${batchId}: ${links.length} links inserted`);
+        totalInserted += links.length;
       }
     }
+    console.log(`🧾 Total links inserted: ${totalInserted}`);
   });
-  console.log(`💡 Number of tests to define: ${totalTests}`);
 });

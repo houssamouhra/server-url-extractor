@@ -1,5 +1,5 @@
-import { insertIntoValidatedLinks } from "./saveValidatedLinksToDb"; // adjust path if needed
-import { ValidatedLink } from "./saveValidatedLinksToDb"; // or inline it if you're not importing types
+import { insertIntoValidatedLinks } from "@db/saveValidatedLinksToDb";
+import { ValidatedLink } from "@db/saveValidatedLinksToDb";
 
 export async function insertInChunks(
   batchId: string,

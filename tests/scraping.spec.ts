@@ -1,9 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { login } from "../helpers/scraping/login";
-import { waitForDynamicPage } from "../helpers/scraping/waitForDynamicPage";
-import { checkForRealAnchorInTextarea } from "../helpers/scraping/extractAnchorLinks";
-import { checkForUrlInPlaceholders } from "../helpers/scraping/extractPlaceholderLinks";
-import { checkPreviousMdUrlsInSameTab } from "../helpers/scraping/checkPreviousMdUrls";
+import { login } from "@scraping/login";
+import { waitForDynamicPage } from "@scraping/waitForDynamicPage";
+import { checkForRealAnchorInTextarea } from "@scraping/extractAnchorLinks";
+import { checkForUrlInPlaceholders } from "@scraping/extractPlaceholderLinks";
+import { checkPreviousMdUrlsInSameTab } from "@scraping/checkPreviousMdUrls";
 import dotenv from "dotenv";
 dotenv.config();
 

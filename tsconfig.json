@@ -1,5 +1,14 @@
 {
   "compilerOptions": {
+    "baseUrl": ".", // root of your project
+    "paths": {
+      "@helpers/*": ["helpers/*"],
+      "@db/*": ["helpers/db/*"],
+      "@network/*": ["helpers/network/*"],
+      "@scraping/*": ["helpers/scraping/*"],
+      "@test-utils/*": ["helpers/test-utils/*"],
+      "@utils/*": ["helpers/utils/*"]
+    },
     /* Visit https://aka.ms/tsconfig to read more about this file */
 
     /* Projects */

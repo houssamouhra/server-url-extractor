@@ -1,6 +1,6 @@
 import { Page } from "@playwright/test";
-import { checkForUrlInPlaceholders } from "./extractPlaceholderLinks";
-import { checkForRealAnchorInTextarea } from "./extractAnchorLinks";
+import { checkForUrlInPlaceholders } from "@scraping/extractPlaceholderLinks";
+import { checkForRealAnchorInTextarea } from "@scraping/extractAnchorLinks";
 import path from "path";
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";

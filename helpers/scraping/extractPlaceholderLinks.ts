@@ -1,6 +1,6 @@
 import { Page } from "@playwright/test";
-import { insertIntoDropLinks } from "../db/saveDropLinksToDb";
-import { checkForRealAnchorInTextarea } from "./extractAnchorLinks";
+import { insertIntoDropLinks } from "@helpers/db/saveDropLinksToDb";
+import { checkForRealAnchorInTextarea } from "@scraping/extractAnchorLinks";
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
 import path from "path";
