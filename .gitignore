@@ -10,3 +10,4 @@ node_modules/
 database/dropLinks.json
 database/validatedLinks.json
 database/links.sqlite
+helpers/network/testCurlRedirects.js

@@ -156,8 +156,8 @@ test.describe("URL Accessibility Test with Output", () => {
         }
         // If curl gives a hard fail status, skip Playwright
         if (
-          [0, 403, 404, 429, 530].includes(curlStatus) ||
-          errorCode === "ENOTFOUND"
+          [0, 403, 404, 429, 530].includes(curlStatus) &&
+          curlResolved === normalizedUrl
         ) {
           const isServerRedirect = curlStatus >= 300 && curlStatus < 400;
 
@@ -195,7 +195,6 @@ test.describe("URL Accessibility Test with Output", () => {
                 const page = await browser.newPage();
                 const response = await page.goto(normalizedUrl, {
                   waitUntil: "load",
-                  timeout: 20000,
                 });
                 await page.waitForTimeout(500);
                 resolved = page.url();
@@ -235,7 +234,7 @@ test.describe("URL Accessibility Test with Output", () => {
           redirection: redirectionHappened,
           redirected_url: redirectionHappened ? resolved : null,
           included,
-          method: "Playwright",
+          method: "playwright",
           ...(resolved === null && { error: "timeout or navigation failure" }),
           validatedAt,
         });

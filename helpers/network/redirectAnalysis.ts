@@ -1,16 +1,9 @@
 // Check for meaningful redirections
-const normalizePath = (path: string) =>
-  path.replace(/\/+$/, "").toLowerCase() || "/";
+const normalizePath = (path: string) => path.replace(/\/+$/, "").toLowerCase();
 const normalizeHost = (host: string) =>
   host.replace(/^www\./, "").toLowerCase();
 
-const safePaths = new Set([
-  "/",
-  "/home",
-  "/dashboard",
-  "/login",
-  "/checkaccount.html",
-]);
+// DEPRECATED – static paths replaced with dynamic scoring
 
 const safeHostPatterns: [RegExp, RegExp][] = [
   [/^gmail\.com$/, /^accounts\.google\.com$/],
@@ -32,6 +25,32 @@ const areHostsEquivalent = (hostA: string, hostB: string): boolean => {
   );
 };
 
+const getPathDepth = (path: string): number =>
+  path.split("/").filter(Boolean).length;
+
+const getPathSimilarity = (a: string, b: string): number => {
+  const partsA = a.split("/").filter(Boolean);
+  const partsB = b.split("/").filter(Boolean);
+
+  let matches = 0;
+  for (let i = 0; i < Math.min(partsA.length, partsB.length); i++) {
+    if (partsA[i] === partsB[i]) matches++;
+    else break;
+  }
+  return matches;
+};
+
+const strongRedirectKeywords = [
+  "product",
+  "offer",
+  "checkout",
+  "track",
+  "go",
+  "redirect",
+  "out",
+  "deal",
+];
+
 export const isMeaningfulRedirect = (
   original: string,
   redirected: string
@@ -39,8 +58,42 @@ export const isMeaningfulRedirect = (
   if (original === redirected) return false;
 
   try {
+    const isShortLink = (url: URL): boolean => {
+      const host = normalizeHost(url.hostname);
+      const path = url.pathname.replace(/\/+$/, "");
+      const pathParts = path.split("/").filter(Boolean);
+
+      // Heuristic 1: Short domain
+      if (host.length <= 7) return true;
+      // just in case someone gives a domain with no TLD
+      if (!host.includes(".")) return false;
+
+      // Heuristic 2: Very short and random path
+      if (
+        pathParts.length === 1 &&
+        /^[a-zA-Z0-9]{5,12}$/.test(pathParts[0]) &&
+        !pathParts[0].includes("-") &&
+        !pathParts[0].includes("_")
+      ) {
+        const shortTLDs = [
+          ".ly",
+          ".gl",
+          ".to",
+          ".at",
+          ".co",
+          ".gg",
+          ".gy",
+          ".sh",
+        ];
+        return shortTLDs.some((tld) => host.endsWith(tld));
+      }
+
+      return false;
+    };
+
     const originalUrl = new URL(original);
     const redirectedUrl = new URL(redirected);
+    const shortLinkUsed = isShortLink(originalUrl);
 
     const hostA = normalizeHost(originalUrl.hostname);
     const hostB = normalizeHost(redirectedUrl.hostname);
@@ -54,19 +107,53 @@ export const isMeaningfulRedirect = (
     const isSameHost = hostA === hostB;
     const isInternalRedirect = areHostsEquivalent(hostA, hostB);
 
-    const isSafePathCombo =
-      (safePaths.has(pathA) && safePaths.has(pathB)) ||
-      (safePaths.has(pathA) && pathB === "/") ||
-      (pathA === "/" && safePaths.has(pathB));
-
     const isSameQuery = queryA === queryB || (!queryA && !queryB);
 
-    return !(
-      (isSameHost || isInternalRedirect) &&
-      isSafePathCombo &&
-      isSameQuery
+    const isSameProtocol = originalUrl.protocol === redirectedUrl.protocol;
+
+    const depthA = getPathDepth(pathA);
+    const depthB = getPathDepth(pathB);
+    const similarity = getPathSimilarity(pathA, pathB);
+
+    const isLikelyRedirectPurpose = strongRedirectKeywords.some((kw) =>
+      pathB.toLowerCase().includes(kw)
     );
+
+    // Core rule: Is this a trivial redirect?
+    const isTrivialRedirect =
+      (isSameHost || isInternalRedirect) &&
+      similarity >= 1 &&
+      Math.abs(depthA - depthB) <= 1 &&
+      !isLikelyRedirectPurpose;
+
+    // Real jump from a short link
+    if (shortLinkUsed && hostA !== hostB) return true;
+
+    // Clear intent (purposeful path)
+    if (isLikelyRedirectPurpose && !areHostsEquivalent(hostA, hostB))
+      return true;
+
+    // Same host, same path, same query, just protocol change → not meaningful
+    if (isSameHost && pathA === pathB && isSameQuery && isSameProtocol) {
+      return false;
+    }
+    if (process.env.NODE_ENV === "development") {
+      console.log({
+        original,
+        redirected,
+        isSameHost,
+        isInternalRedirect,
+        similarity,
+        depthA,
+        depthB,
+        isTrivialRedirect,
+        shortLinkUsed,
+        isLikelyRedirectPurpose,
+      });
+    }
+    // Main rule
+    return !isTrivialRedirect;
   } catch (err) {
-    return true; // If parsing fails, assume it's a redirect to be safe
+    return true; // Fail-safe: assume redirect is meaningful
   }
 };
