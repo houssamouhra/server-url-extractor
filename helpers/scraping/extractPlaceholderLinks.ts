@@ -1,8 +1,9 @@
 import { Page } from "@playwright/test";
-import { insertIntoDropLinks } from "@helpers/db/saveDropLinksToDb";
-import { extractAnchorLinksFromTextarea } from "@scraping/extractAnchorLinksFromTextarea";
+import { parse } from "tldts";
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
+import { insertIntoDropLinks } from "@helpers/db/saveDropLinksToDb";
+import { extractAnchorLinksFromTextarea } from "@scraping/extractAnchorLinksFromTextarea";
 
 import path from "path";
 
@@ -119,51 +120,34 @@ export const checkForUrlInPlaceholders = async (
 
       const matches = content.match(domainLikeRegex) || [];
 
-      const finalUrls = matches.filter((url) => {
-        // Heuristic: reject if URL has only one dot and both parts are short
-        const parts = url.split(".");
-        if (parts.length === 2) {
-          const [left, right] = parts;
-          if (left.length <= 3 && right.length <= 3) return false;
-        }
+      console.log(`🔍 [${i}] Regex matched ${matches.length} raw URLs`);
+      matches.forEach((url) => console.log(`   - raw: ${url}`));
 
-        // Basic top-level domain validation
-        const tld = url.split(".").pop()?.toLowerCase();
-        const validTlds = [
-          "com",
-          "net",
-          "org",
-          "de",
-          "info",
-          "co",
-          "io",
-          "gov",
-          "edu",
-          "uk",
-          "us",
-          "biz",
-          "ru",
-          "cn",
-          "au",
-          "ly",
-          "ca",
-          "se",
-          "me",
-          "li",
-          "in",
-          "moe",
-          "cc",
-          "cx",
-          "global",
-          "cl",
-        ];
-        if (!validTlds.includes(tld || "")) return false;
+      const finalUrls = matches
+        // sanitize first
+        .map((url) => url.trim().replace(/[.,)]+$/, ""))
+        .filter((cleanLink) => {
+          // Heuristic: reject if URL has only one dot and both parts are short
+          const parts = cleanLink.split(".");
+          if (parts.length === 2) {
+            const [left, right] = parts;
+            if (left.length <= 3 && right.length <= 3) return false;
+          }
 
-        return true;
-      });
+          // top-level domain validation
+          const parsed = parse(cleanLink);
+
+          if (!parsed.domain || !parsed.publicSuffix) {
+            console.log(`⛔ Invalid domain or TLD: ${cleanLink}`);
+            return false;
+          }
+
+          return true;
+        });
 
       if (finalUrls.length > 0) {
         console.log(`🌐 [${i}] Found ${finalUrls.length} domain-like URLs`);
+        finalUrls.forEach((url) => console.log(`   ✅ accepted: ${url}`));
       } else {
         console.log(`❌ [${i}] No domain-like URLs in textarea #${i}`);
       }
