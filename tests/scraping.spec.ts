@@ -1,9 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { login } from "@scraping/login";
 import { waitForDynamicPage } from "@scraping/waitForDynamicPage";
-import { checkForRealAnchorInTextarea } from "@scraping/extractAnchorLinks";
+import { extractAnchorLinksFromText } from "@scraping/extractAnchorLinks";
 import { checkForUrlInPlaceholders } from "@scraping/extractPlaceholderLinks";
 import { checkPreviousMdUrlsInSameTab } from "@scraping/checkPreviousMdUrls";
+import { extractAnchorLinksFromTextarea } from "@scraping/extractAnchorLinksFromTextarea";
+
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -81,7 +83,7 @@ test.describe("Scraping Tests", () => {
       popup.locator("span", { hasText: "Email Body" })
     ).toBeVisible();
 
-    const hasRealAnchor = await checkForRealAnchorInTextarea(popup);
+    const hasRealAnchor = await extractAnchorLinksFromTextarea(popup);
 
     hasRealAnchor
       ? console.log("Valid anchor link found!")

@@ -1,8 +1,9 @@
 import { Page } from "@playwright/test";
 import { insertIntoDropLinks } from "@helpers/db/saveDropLinksToDb";
-import { checkForRealAnchorInTextarea } from "@scraping/extractAnchorLinks";
+import { extractAnchorLinksFromTextarea } from "@scraping/extractAnchorLinksFromTextarea";
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
+
 import path from "path";
 
 const dbPath = path.resolve("database/links.sqlite");
@@ -75,6 +76,13 @@ export const checkForUrlInPlaceholders = async (
   console.log(`Found ${totalTabs} placeholder tabs.`);
 
   // Skip if ANY drop batch for this baseId already exists
+  const anchorLinks = await extractAnchorLinksFromTextarea(popup);
+
+  if (anchorLinks.length > 0) {
+    console.log(`🔗 Found ${anchorLinks.length} anchor link(s) in #body`);
+  } else {
+    console.log("❌ No anchor links found in #body");
+  }
 
   for (let i = 1; i <= totalTabs; i++) {
     if (i >= 4) {
@@ -154,6 +162,12 @@ export const checkForUrlInPlaceholders = async (
         return true;
       });
 
+      if (finalUrls.length > 0) {
+        console.log(`🌐 [${i}] Found ${finalUrls.length} domain-like URLs`);
+      } else {
+        console.log(`❌ [${i}] No domain-like URLs in textarea #${i}`);
+      }
+
       finalUrls.forEach((link) => {
         const cleanLink = link.trim();
         if (cleanLink && !allUniqueLinks.has(cleanLink)) {
@@ -164,7 +178,6 @@ export const checkForUrlInPlaceholders = async (
       });
 
       // Extract anchor links and merge with batch
-      const anchorLinks = await checkForRealAnchorInTextarea(popup);
       for (const anchorLink of anchorLinks) {
         const cleanAnchor = anchorLink.trim();
         if (cleanAnchor && !allUniqueLinks.has(cleanAnchor)) {

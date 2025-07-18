@@ -1,6 +1,6 @@
 import { Page } from "@playwright/test";
 import { checkForUrlInPlaceholders } from "@scraping/extractPlaceholderLinks";
-import { checkForRealAnchorInTextarea } from "@scraping/extractAnchorLinks";
+import { extractAnchorLinksFromTextarea } from "@scraping/extractAnchorLinksFromTextarea";
 import path from "path";
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
@@ -33,7 +33,7 @@ export const checkPreviousMdUrlsInSameTab = async (
     await popup.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
     await popup.waitForTimeout(500);
 
-    const anchorLinks = await checkForRealAnchorInTextarea(popup);
+    const anchorLinks = await extractAnchorLinksFromTextarea(popup);
     const placeholderLinks = await checkForUrlInPlaceholders(popup);
 
     return { anchorLinks, placeholderLinks };
