@@ -39,6 +39,23 @@ export async function validateWithPlaywright(
   const included =
     resolved && ctx.ids.some((id) => resolved.includes(String(id)));
 
+  if (!resolved || status === 0) {
+    console.log(
+      `❌ Link ${url} failed: status=${status}, resolved=${resolved}`
+    );
+    return {
+      linkKey,
+      original: url,
+      status,
+      redirection: false,
+      redirected_url: null,
+      included: false,
+      method: "playwright",
+      error: "unresolved or failed (status 0)",
+      validatedAt: ctx.validatedAt,
+    };
+  }
+
   return {
     linkKey,
     original: url,
