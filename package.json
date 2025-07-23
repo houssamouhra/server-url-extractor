@@ -13,6 +13,7 @@
   ".cjs": "require",
   "devDependencies": {
     "@playwright/test": "^1.53.1",
+    "@types/express": "^5.0.3",
     "@types/node": "^24.0.1",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",

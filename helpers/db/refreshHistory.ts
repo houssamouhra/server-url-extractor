@@ -26,3 +26,13 @@ export async function insertRedirectionHistory(
     timestamp
   );
 }
+
+export async function getRedirectionHistory(linkId: string) {
+  return db.all(
+    `SELECT redirected_url, status_code, timestamp
+     FROM url_redirection_history
+     WHERE validated_link_id = ?
+     ORDER BY timestamp DESC`,
+    linkId
+  );
+}

@@ -2,8 +2,9 @@
 import express from "express";
 import cors from "cors";
 import Database from "better-sqlite3";
-import path from "path";
+import refreshRoutes from "./routes/refresh.ts";
 import { fileURLToPath } from "url";
+import path from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,6 +47,8 @@ app.get("/api/validated-links", (req, res) => {
     res.status(500).json({ error: "Failed to fetch data from database" });
   }
 });
+
+app.use("/api", refreshRoutes);
 
 app.listen(PORT, () => {
   console.log(`✅ API running at http://localhost:${PORT}`);
