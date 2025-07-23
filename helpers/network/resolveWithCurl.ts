@@ -19,8 +19,8 @@ export async function resolveWithCurl(
     const status = match ? parseInt(match[1]) : 0;
     const resolved = match?.[2].trim() || null;
 
-    function isLikelyStaticUrl(a: string, b: string): boolean {
-      if (!b) return false;
+    // === Heuristics ===
+    const isLikelyStaticUrl = (a: string, b: string): boolean => {
       try {
         const urlA = new URL(a);
         const urlB = new URL(b);
@@ -31,7 +31,27 @@ export async function resolveWithCurl(
       } catch {
         return false;
       }
-    }
+    };
+
+    const shouldMarkAsNoRedirect = (
+      status: number,
+      url: string,
+      resolved: string | null
+    ): boolean => {
+      if (!resolved || resolved === url) return true;
+      if (resolved.includes("YOUR_OFFER_URL_HERE")) return true;
+
+      try {
+        const originalUrl = new URL(url);
+        const resolvedUrl = new URL(resolved);
+        const sameHost = originalUrl.hostname === resolvedUrl.hostname;
+        const shallowPath =
+          resolvedUrl.pathname.split("/").filter(Boolean).length <= 2;
+        return status === 200 && sameHost && shallowPath;
+      } catch {
+        return true;
+      }
+    };
 
     const shouldFallbackToClientRedirect = (
       status: number,
@@ -39,34 +59,39 @@ export async function resolveWithCurl(
       resolved: string | null
     ) =>
       !resolved ||
+      resolved.startsWith("chrome-error://") ||
       isLikelyStaticUrl(url, resolved) ||
-      [0, 403, 429].includes(status);
+      status === 0 ||
+      (status === 200 && resolved === url);
 
-    // prettier-ignore
-    // Step 2: If status is 200 and resolved === original, we suspect client-side redirect
+    // === Step 2: Check for client-side (JS or META) redirects ===
     if (shouldFallbackToClientRedirect(status, url, resolved)) {
       const rawHtmlCommand = `curl --max-time 5 "${url}"`;
       const { stdout: html } = await execAsync(rawHtmlCommand);
 
-      // Look for JS or META redirects
-      // Matches JS redirects either "window.location.href" or "document.location.href"
-      const jsMatch = html.match(  /(document|window)\.location(?:\.href)?\s*=\s*['"]([^'"]+)['"]/i);
-      const metaMatch = html.match(/<meta[^>]+http-equiv=["']refresh["'][^>]+content=["'][^;]+;\s*url=([^"'>]+)["']/i);
+      const jsMatch = html.match(
+        /(document|window)\.location(?:\.href)?\s*=\s*['"]([^'"]+)['"]/i
+      );
+      const metaMatch = html.match(
+        /<meta[^>]+http-equiv=["']refresh["'][^>]+content=["'][^;]+;\s*url=([^"'>]+)["']/i
+      );
       const rawRedirect = jsMatch?.[2] || metaMatch?.[1];
 
       if (rawRedirect) {
-        console.log(`🔁 Extracted redirect from HTML: ${rawRedirect}`);
+        if (shouldMarkAsNoRedirect(status, url, rawRedirect)) {
+          console.warn(`🚫 Ignoring fake redirect: ${rawRedirect}`);
+          return { status: 200, resolved: url };
+        }
 
         const resolvedFallback = new URL(rawRedirect, url).toString();
-
         const followRedirect = `curl --max-time 5 -Ls -o /dev/null -w "%{http_code} %{url_effective}" "${resolvedFallback}"`;
         const { stdout: followOut } = await execAsync(followRedirect);
         const followMatch = followOut.trim().match(/^(\d{3})\s+(.+)$/);
 
         if (followMatch) {
-          const status = parseInt(followMatch[1]);
-          const resolved = followMatch[2].trim();
-          return { status, resolved };
+          const fallbackStatus = parseInt(followMatch[1]);
+          const fallbackResolved = followMatch[2].trim();
+          return { status: fallbackStatus, resolved: fallbackResolved };
         }
 
         return { status: 200, resolved: resolvedFallback };

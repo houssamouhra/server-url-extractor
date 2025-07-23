@@ -7,7 +7,8 @@
       "@network/*": ["helpers/network/*"],
       "@scraping/*": ["helpers/scraping/*"],
       "@test-utils/*": ["helpers/test-utils/*"],
-      "@utils/*": ["helpers/utils/*"]
+      "@utils/*": ["helpers/utils/*"],
+      "@services/*": ["services/*"]
     },
     /* Visit https://aka.ms/tsconfig to read more about this file */
 

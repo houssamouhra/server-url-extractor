@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { login } from "@scraping/login";
 import { waitForDynamicPage } from "@scraping/waitForDynamicPage";
-import { extractAnchorLinksFromText } from "@scraping/extractAnchorLinks";
 import { checkForUrlInPlaceholders } from "@scraping/extractPlaceholderLinks";
 import { checkPreviousMdUrlsInSameTab } from "@scraping/checkPreviousMdUrls";
 import { extractAnchorLinksFromTextarea } from "@scraping/extractAnchorLinksFromTextarea";
