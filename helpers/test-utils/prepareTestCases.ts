@@ -1,4 +1,4 @@
-import { TestCase } from "@helpers/test-utils";
+import type { TestCase } from "@helpers/test-utils";
 
 export function prepareTestCases(
   groupedByBatch: Record<string, Record<string, string>>,

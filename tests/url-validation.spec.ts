@@ -1,9 +1,9 @@
 import { test } from "@playwright/test";
 import sqlite3 from "sqlite3";
 import { insertInChunks } from "@db/insertInChunks";
-import { ValidatedLink } from "@db/saveValidatedLinksToDb";
+import type { ValidatedLink } from "@db/saveValidatedLinksToDb";
 import { formatDate } from "@utils/formatDate";
-import { ValidationContext } from "@helpers/test-utils";
+import type { ValidationContext } from "@helpers/test-utils";
 import { loadDropLinkData } from "@helpers/db/loadDropLinks";
 import { loadValidatedCounts } from "@helpers/db/loadValidatedCounts";
 

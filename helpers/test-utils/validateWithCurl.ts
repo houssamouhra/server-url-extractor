@@ -1,7 +1,7 @@
 import { resolveWithCurl } from "@network/resolveWithCurl";
 import { isMeaningfulRedirect } from "@network/redirectAnalysis";
-import { ValidatedLink } from "@db/saveValidatedLinksToDb";
-import { ValidationContext } from "@helpers/test-utils";
+import type { ValidatedLink } from "@db/saveValidatedLinksToDb";
+import type { ValidationContext } from "@helpers/test-utils";
 
 export async function validateWithCurl(
   batchId: string,

@@ -1,9 +1,9 @@
-import { Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { parse } from "tldts";
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
-import { insertIntoDropLinks } from "@helpers/db/saveDropLinksToDb";
-import { extractAnchorLinksFromTextarea } from "@scraping/extractAnchorLinksFromTextarea";
+import { insertIntoDropLinks } from "@db/saveDropLinksToDb.ts";
+import { extractAnchorLinksFromTextarea } from "@scraping/extractAnchorLinksFromTextarea.ts";
 
 import path from "path";
 

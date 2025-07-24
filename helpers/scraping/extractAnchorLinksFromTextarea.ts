@@ -1,5 +1,5 @@
-import { Page } from "@playwright/test";
-import { extractAnchorLinksFromText } from "@scraping/extractAnchorLinks";
+import type { Page } from "playwright";
+import { extractAnchorLinksFromText } from "@scraping/extractAnchorLinks.ts";
 
 // Optional param: fallback to "#body"
 export const extractAnchorLinksFromTextarea = async (

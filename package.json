@@ -4,20 +4,32 @@
   "description": "",
   "main": "script.js",
   "scripts": {
-    "build:css": "tailwindcss -i ./style.css -o ./dist/output.css --watch"
+    "build": "tsup",
+    "serve": "node dist/sql-server.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Houssam Ouhra",
   "license": "ISC",
   "type": "module",
+  "imports": {
+    "#routes/*": "./backend/routes/*.ts",
+    "#services/*": "./services/*.ts",
+    "#db/*": "./helpers/db/*.ts"
+  },
   ".cjs": "require",
   "devDependencies": {
     "@playwright/test": "^1.53.1",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.1",
     "autoprefixer": "^10.4.21",
+    "cross-env": "^7.0.3",
     "postcss": "^8.5.6",
-    "tailwindcss": "^3.3.5"
+    "tailwindcss": "^3.3.5",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3"
   },
   "dependencies": {
     "better-sqlite3": "^12.2.0",
@@ -27,7 +39,6 @@
     "express": "^5.1.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
-    "tldts": "^7.0.10",
-    "typescript": "^5.8.3"
+    "tldts": "^7.0.10"
   }
 }

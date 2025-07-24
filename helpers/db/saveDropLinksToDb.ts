@@ -1,6 +1,6 @@
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
-import { formatDate } from "@utils/formatDate";
+import { formatDate } from "@utils/formatDate.ts";
 
 import path from "path";
 

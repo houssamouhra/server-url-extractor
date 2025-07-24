@@ -1,6 +1,6 @@
 import { isMeaningfulRedirect } from "@network/redirectAnalysis";
-import { ValidatedLink } from "@db/saveValidatedLinksToDb";
-import { ValidationContext } from "@test-utils/validationTypes";
+import type { ValidatedLink } from "@db/saveValidatedLinksToDb";
+import type { ValidationContext } from "@test-utils/validationTypes";
 
 export async function validateWithPlaywright(
   batchId: string,

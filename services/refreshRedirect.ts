@@ -1,8 +1,8 @@
-import { resolveWithCurl } from "@network/resolveWithCurl";
-import { validateWithPlaywright } from "@helpers/test-utils/validateWithPlaywright";
-import { insertRedirectionHistory } from "@db/refreshHistory";
-import { formatDate } from "@utils/formatDate";
-import { isLikelyFinal } from "@utils/urlClassifier";
+import { resolveWithCurl } from "@network/resolveWithCurl.ts";
+import { validateWithPlaywright } from "@test-utils/validateWithPlaywright.ts";
+import { insertRedirectionHistory } from "@db/refreshHistory.ts";
+import { formatDate } from "@utils/formatDate.ts";
+import { isLikelyFinal } from "@utils/urlClassifier.ts";
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
 import path from "path";

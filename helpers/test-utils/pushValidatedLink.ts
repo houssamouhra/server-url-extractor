@@ -1,4 +1,4 @@
-import { ValidatedLink } from "@db/saveValidatedLinksToDb"; // adjust path as needed
+import type { ValidatedLink } from "@db/saveValidatedLinksToDb"; // adjust path as needed
 
 export function pushValidatedLink(
   target: Record<string, ValidatedLink[]>,

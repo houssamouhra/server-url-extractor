@@ -1,8 +1,8 @@
-import { Browser } from "@playwright/test";
+import type { Browser } from "@playwright/test";
 import { validateWithCurl } from "@test-utils/validateWithCurl";
 import { validateWithPlaywright } from "@test-utils/validateWithPlaywright";
-import { ValidatedLink } from "@db/saveValidatedLinksToDb";
-import { ValidationContext } from "@test-utils/validationTypes";
+import type { ValidatedLink } from "@db/saveValidatedLinksToDb";
+import type { ValidationContext } from "@test-utils/validationTypes";
 
 export async function runValidation(
   batchId: string,

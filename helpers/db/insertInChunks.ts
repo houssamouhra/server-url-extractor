@@ -1,5 +1,5 @@
-import { insertIntoValidatedLinks } from "@db/saveValidatedLinksToDb";
-import { ValidatedLink } from "@db/saveValidatedLinksToDb";
+import { insertIntoValidatedLinks } from "@db/saveValidatedLinksToDb.ts";
+import type { ValidatedLink } from "@db/saveValidatedLinksToDb.ts";
 
 export async function insertInChunks(
   batchId: string,

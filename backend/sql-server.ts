@@ -1,8 +1,7 @@
-// backend/server.js
 import express from "express";
 import cors from "cors";
 import Database from "better-sqlite3";
-import refreshRoutes from "./routes/refresh.ts";
+import refreshRoutes from "@routes/refresh";
 import { fileURLToPath } from "url";
 import path from "path";
 
@@ -15,6 +14,8 @@ const PORT = 3000;
 // Path to the SQLite file
 const dbPath = path.join(__dirname, "../database/links.sqlite");
 const db = new Database(dbPath);
+
+app.use("/api", refreshRoutes);
 
 app.use(cors());
 
@@ -42,13 +43,15 @@ app.get("/api/validated-links", (req, res) => {
       .all();
 
     res.json(rows);
-  } catch (err) {
+  } catch (err: any) {
     console.error("Database error:", err.message);
     res.status(500).json({ error: "Failed to fetch data from database" });
   }
 });
 
-app.use("/api", refreshRoutes);
+app.get("/test-error", (req, res, next) => {
+  next(new Error("💥 Intentional test error"));
+});
 
 app.listen(PORT, () => {
   console.log(`✅ API running at http://localhost:${PORT}`);
