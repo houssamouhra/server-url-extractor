@@ -21,18 +21,20 @@ export async function refreshRedirectedUrl(linkId: string): Promise<{
   source: "curl" | "playwright";
 }> {
   const current = await db.get(
-    `SELECT final_url FROM validated_links WHERE id = ?`,
+    `SELECT redirected_url FROM validated_links WHERE id = ?`,
     linkId
   );
 
   if (!current) throw new Error("Link not found");
 
-  const { resolved, status } = await resolveWithCurl(current.final_url);
+  const { redirected_url } = current;
 
-  if (!resolved || resolved === current.final_url) {
+  const { resolved, status } = await resolveWithCurl(redirected_url);
+
+  if (!resolved || resolved === current.redirected_url) {
     return {
       wasUpdated: false,
-      newUrl: current.final_url,
+      newUrl: current.redirected_url,
       source: "curl",
     };
   }
@@ -64,9 +66,9 @@ export async function refreshRedirectedUrl(linkId: string): Promise<{
 
   await insertRedirectionHistory(linkId, finalUrl, status, timestamp);
 
-  // Optional: Update final_url in validated_links
+  // Optional: Update redirected_url in validated_links
   await db.run(
-    `UPDATE validated_links SET final_url = ? WHERE id = ?`,
+    `UPDATE validated_links SET redirected_url = ? WHERE id = ?`,
     finalUrl,
     linkId
   );

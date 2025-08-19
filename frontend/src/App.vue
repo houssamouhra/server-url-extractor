@@ -7,7 +7,7 @@
 
 <script setup>
 import "vue-sonner/style.css";
-import ValidatedLinks from "@/components/ValidatedLinks.vue";
+import ValidatedLinks from "./components/links-table/ValidatedLinks.vue";
 import { Toaster } from "vue-sonner";
 </script>
 

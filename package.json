@@ -4,6 +4,7 @@
   "description": "",
   "main": "script.js",
   "scripts": {
+    "dev": "tsup --watch",
     "build": "tsup",
     "serve": "node dist/sql-server.js"
   },

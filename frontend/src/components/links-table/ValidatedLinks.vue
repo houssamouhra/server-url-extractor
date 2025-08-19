@@ -9,9 +9,7 @@
 
       <!-- header -->
       <div v-else key="content" class="w-full max-w-screen-3xl mx-auto px-2 sm:px-4">
-        <h1 class="text-xl sm:text-2xl md:text-3xl font-bold text-center mb-4 sm:mb-6 text-red-900 glow-text">
-          Validated Links Viewer
-        </h1>
+        <TheHeader></TheHeader>
 
         <!-- Clear Filter -->
         <ClearFilter @clear="resetFilters" />
@@ -164,7 +162,7 @@
         </table>
 
         <!-- Pagination -->
-        <Pagination
+        <BasePagination
           v-if="filteredData.length"
           :data="filteredData"
           v-model:currentPage="currentPage"
@@ -184,12 +182,13 @@
 import { ref, onMounted } from "vue";
 import { Icon } from "@iconify/vue";
 import { toast } from "vue-sonner";
-import AnimatedTh from "@/components/AnimatedTh.vue";
-import ClearFilter from "@/components/ClearFilter.vue";
-import FilterRow from "@/components/FilterRow.vue";
-import Pagination from "@/components/Pagination.vue";
-import NotFoundFilter from "@/components/NotFoundFilter.vue";
+import AnimatedTh from "@/components/links-table/Header/AnimatedTh.vue";
+import ClearFilter from "@/components/links-table/Header/ClearFilter.vue";
+import FilterRow from "@/components/links-table/filters/BaseFilterRow.vue";
+import NotFoundFilter from "@/components/links-table/NotFoundFilter.vue";
 import { useColumnFilters } from "@/composables/useColumnsFilter";
+import BasePagination from "@/components/links-table/pagination/BasePagination.vue";
+import TheHeader from "@/components/layout/TheHeader.vue";
 
 type LinkEntry = {
   batchId: string;
@@ -231,7 +230,7 @@ filters.value = {
 // prettier-ignore
 const columns = [
   { key: "batchId", label: "Drop ID", class: "w-[140px] text-center" },
-  { key: "date", type: "date",label: "Date", class: "w-[140px] text-center" },
+  { key: "date", type: "date",label: "Date", class: "w-[130px] text-center" },
   { key: "original", label: "Original URL"},
   { key: "status", label: "Status", class: "w-[110px] text-center" },
   { key: "redirection", label: "Redirected?", class: "w-[80px] text-center" },
